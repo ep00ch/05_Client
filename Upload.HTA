@@ -17,16 +17,16 @@
 </script>
 
 <head>
-<title>eDiscovery EDMS Uploader v2</title>
+<title>eDiscovery EDMS Uploader</title>
 <HTA:APPLICATION ID="appShareHTA"
      APPLICATIONNAME="eDiscovery Uploader"
      SCROLL="no"
      SINGLEINSTANCE="yes"
      WINDOWSTATE="Normal"
-     VERSION="1.3"
+     VERSION="1.2.1"
 />
 <meta name="description" content="Case File Archive Uploader">
-<meta name="last modified" content="04/12/2021">
+<meta name="last modified" content="07/15/2019">
 <meta name="author" content="Eric S. Pooch">
 <style>
 	body{font-family:Calibri;}
@@ -40,28 +40,25 @@ Const debugLvl = 5: Const infoLvl = 4 : Const warnLvl = 3: Const errorLvl = 2 : 
 Dim logLvl : logLvl = infoLvl
 
 Dim objFSO   : Set objFSO = CreateObject("Scripting.FileSystemObject")
-Dim objShell : Set objShell = CreateObject("WScript.Shell")
+Dim objShell : Set objShell = CreateObject("Wscript.Shell")
 
-Const archPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\"
+Const archPath  = "L:\CaseFile_Archive\"
 
 'Dim inputPath : inputPath  = archPath & "_FOR_DISCLOSURE\eDiscovery_EDMS\"
 'Dim scanPath : scanPath = inputPath & "eDisCityAtty\"
 'Dim eSharePath : eSharePath = inputPath & "eShare\"
 'Const scanPath  = "\\ad\dfs\Scans\sdat-scan01\eDisCityAtty\"
-Const scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
-Const cloudPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
-Const eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
-Const placePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\05_Client\Digital Media Place Holder.dotx"
+Const scanPath  = "L:\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
+Const cloudPath  = "L:\CRIMFORM\eDiscovery_EDMS\FileCloud\"
+Const eSharePath = "L:\CRIMFORM\eDiscovery_EDMS\eShare\"
+Const placePath = "L:\CaseFile_Archive\Resources\Digital Media Place Holder.dotx"
 
 Dim aryAcroPaths : aryAcroPaths = Array( "C:\Program Files\Adobe\Acrobat 10.0\",_
-										 "C:\Program Files\Adobe\Acrobat 2015\",_
 										 "C:\Program Files\Adobe\Acrobat 11.0\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat DC\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat 2015\",_
+										 "C:\Program Files (x86)\Adobe\Acrobat DC\"_
 										 "C:\Program Files (x86)\Adobe\Acrobat 11.0")
-' Const strGSPath	= "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\GPLGS\bin"
-Const strGSPath	= "C:\Program Files\gs\gs9.53.3\bin\gswin64c.exe"
-Dim strGSExePath : strGSExePath = strGSPath & "gswin64c.exe"
+Const strGSPath	= "C:\Program Files\GPLGS\"
+Dim strGSExePath : strGSExePath = strGSPath & "gswin32c.exe"
 
 ' Make sure we have network connection
 If NOT (objFSO.FolderExists(scanPath) AND objFSO.FolderExists(archPath) ) Then
@@ -73,9 +70,6 @@ End If
 ' Pull out the file path argument from the command string.
 Dim strCommand  : strCommand  = appShareHTA.commandLine 
 Dim strFilePath : strFilePath = Trim(Split(strCommand, "/f")(1))
-
-' Pull out the no remote discovery option from the command string.
-Dim boolNoDisco   : boolNoDisco   = InStr(strCommand, " /nodisco ") >0
 
 Dim aryFilePaths : aryFilePaths = getPathsFromArgs(strFilePath)
 strFilePath = aryFilePaths(0)
@@ -246,19 +240,12 @@ End Sub
 
 Function FormatFileName(strFileName)
 	Dim strDestName : strDestName = strFileName
-
-	If strCMSCase <> CMSNumber.Value OR FileType.Value <> "" Then
+	If strCMSCase <> CMSNumber.Value Then
    		' Get rid of '_'s that will confuse the server.
 		strDestName = Replace(strDestName, "_", "-")
-
-		If FileType.Value <> "" Then
-			' Add the destination folder for the file type
-			strDestName = FileType.Value & "_" & strDestName
-		End If
 		strDestName = CMSNumber.Value & "_" & strDestName
 	End If
 	FormatFileName = strDestName
-
 End Function
 
 
@@ -319,7 +306,7 @@ Function ContactSheetGS(aryFiles)
 	'	include standard viewjpeg.pd and viewjpeg.ps for view image code.
 	Dim strGSCommand : strGSCommand = """" & strGSExePath & """" &_ 
 		" -dQUIET -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook" &_
-		" -sOutputFile=""" & ContactSheetGS & """" &_
+		" -sOutputFile=""" & ContactSheet & """" &_
 		" -sCap=""" & objFSO.GetFileName(aryFiles(0)) & """" &_
 		" """ & archPath & "Resources\caption.ps" & """ """ & strGSPath & "viewjpeg.ps" & """ """ &  strGSPath & "viewjpeg.ps"""
 		
@@ -609,7 +596,15 @@ Sub EmbedPreview
 		Preview.InnerHTML = strFilePath & "<br><br>All selected files will be sent with the same CMS information."
 	End If
 
-	Preview.InnerHTML = strFilePath & "<br><iframe src='" & strFilePath & "' width='200' height='290'></iframe>"
+	Dim strExtensionName : strExtensionName = objFSO.GetExtensionName(strFileName)
+	Dim strFileType : strFileType = objFSO.GetFile(strFilePath).Type
+
+	If InStr(LCase(strFileType), "image") Then
+		Preview.InnerHTML = strFilePath & "<br><img src='" & strFilePath & "' alt='Discovery Preview' width='440' height='300'>"
+	Else
+		Preview.InnerHTML = strFilePath & "<br><embed src='" & strFilePath & "' width='440' height='300' type='application/" & strExtensionName & "'>"
+	End If
+
 End Sub
 
 Function CompressFolder(strFolderPath)
@@ -685,25 +680,13 @@ Sub SetFormContent
 		retdRadio.title = strNotInArchive
 		holdCheck.title = strNotInArchive
 	End If	
-		
-	archRadio.disabled = boolInArch	
-	archRadio.checked = Not boolInArch
+	
+	archRadio.disabled = boolInArch
+    archRadio.checked = Not boolInArch
     
 	retdRadio.disabled = Not boolInArch
 	retdRadio.checked = boolInArch
-
-    	If boolNoDisco Then
-		' Disable discovery options if specified from command line
-		archRadio.disabled = boolNoDisco
-		retdRadio.disabled = boolNoDisco
-		retdRadio.checked = Not boolNoDisco		
-		pdRadio.disabled = boolNoDisco
-		adRadio.disabled = boolNoDisco
-		acRadio.disabled = boolNoDisco
-		mcRadio.disabled = boolNoDisco
-		EnabledAsDisco.style.color = "gray"
-	End If
-
+    
 	'cloudRadio.disabled = Not (boolInArch And boolDebug)
 	    
 	holdCheck.disabled = Not boolInArch
@@ -785,49 +768,29 @@ End Sub
 
 
 Sub ShowHelp
-	' objShell.Run """\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf"""
-	objShell.Run """L:\CaseFile_Archive\Resources\05_Client\eDiscovery_EDMS_Uploader.pdf"""
+	objShell.Run """L:\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf"""
 End Sub
 
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf">[Help]</a></span>
+<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="L:\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf">[Help]</a></span>
 <h5>Select where to send the file to:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
 </span><br>
-
-<span id = "EnabledAsDisco" class="EnabledAsDisco">
 <span id = "EnabledInArch" class="EnabledInArch">
 <input type="radio" id="cloudRadio" name="office" value="FileCloud" disabled> FileCloud<br>
 <input type="radio" id="retdRadio"  name="office" value="Retained" disabled> Retained Counsel
 </span><br><br>
-<input type="radio" id="pdRadio" name="office" value="PrimaryDefender"  > Primary Public Defender<br>
-<input type="radio" id="adRadio" name="office" value="AlternateDefender"> Alternate Public Defender<br>
-<input type="radio" id="acRadio" name="office" value="AssignedCounsel"  > Office of Assigned Counsel<br>
-<input type="radio" id="mcRadio" name="office" value="MultipleConflicts"> Multiple Conflicts Counsel<br>
-</span>
-
+<input type="radio" name="office" value="PrimaryDefender"  > Primary Public Defender<br>
+<input type="radio" name="office" value="AlternateDefender"> Alternate Public Defender<br>
+<input type="radio" name="office" value="AssignedCounsel"  > Office of Assigned Counsel<br>
+<input type="radio" name="office" value="MultipleConflicts"> Multiple Conflicts Counsel<br>
 <h5>Additional Options:</h5>
 <span id = "EnabledInArch2" class="EnabledInArch"><input type="checkbox" id="holdCheck" name="placeholder" class="EnabledInArch" disabled> Print Placeholder Sheet</span>&nbsp&nbsp&nbsp
 <span id = "EnabledIfPics"  class="EnabledIfPics"><input type="checkbox" id="summCheck" name="pdfsummary"  class="EnabledIfPics" disabled> Send Photograph Summary</span><br><br>
 <!--{{InsertControlsHere}}-Do not remove this line-->
-CMS Case Number:  <input type="text" name="CMSNumber" disabled><br>
-Type of file: 
- <select name="FileType">
-  <option value="">Default</option>
-  <option value="CNF">Left Side-Confidential</option>
-  <option value="URD">Left Side-Needs Review/Redaction</option>
-  <option value="RPS">RAPS</option>
-  <option value="CRE">CRE</option>
-  <option value="TRN">Transcripts</option>
-  <option value="MOT">Motions</option>
-  <option value="CII">CI-Confidential</option>
-  <option value="COR">Correspondence</option>
-  <option value="VIC">Victim Forms/Receipts</option>
-  <option value="OTH">Other</option>
-  <option value="PAS">Private Atty Share</option>
- </select><br><br>
+CMS Case Number:  <input type="text" name="CMSNumber" disabled><br><br>
 <span id = "SubmitButton"><input type="button" value="Submit File" type="submit" onClick="Upload"></span>
 <hr>
 <span id = "Preview"><input type="button" value="Preview" onClick="EmbedPreview"></span><br>
