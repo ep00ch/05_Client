@@ -23,10 +23,10 @@
      SCROLL="no"
      SINGLEINSTANCE="yes"
      WINDOWSTATE="Normal"
-     VERSION="1.2"
+     VERSION="1.2.1"
 />
 <meta name="description" content="Case File Archive Uploader">
-<meta name="last modified" content="08/03/2017">
+<meta name="last modified" content="07/15/2019">
 <meta name="author" content="Eric S. Pooch">
 <style>
 	body{font-family:Calibri;}
@@ -51,11 +51,12 @@ Const archPath  = "L:\CaseFile_Archive\"
 Const scanPath  = "L:\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
 Const cloudPath  = "L:\CRIMFORM\eDiscovery_EDMS\FileCloud\"
 Const eSharePath = "L:\CRIMFORM\eDiscovery_EDMS\eShare\"
-Const placePath = "L:\CaseFile_Archive\Resources\05_Client\Digital Media Place Holder.dotx"
+Const placePath = "L:\CaseFile_Archive\Resources\Digital Media Place Holder.dotx"
 
 Dim aryAcroPaths : aryAcroPaths = Array( "C:\Program Files\Adobe\Acrobat 10.0\",_
 										 "C:\Program Files\Adobe\Acrobat 11.0\",_
-										 "C:\Program Files\Adobe\Acrobat 2015\")
+										 "C:\Program Files (x86)\Adobe\Acrobat DC\"_
+										 "C:\Program Files (x86)\Adobe\Acrobat 11.0")
 Const strGSPath	= "C:\Program Files\GPLGS\"
 Dim strGSExePath : strGSExePath = strGSPath & "gswin32c.exe"
 
@@ -675,7 +676,7 @@ Sub SetFormContent
 		EnabledInArch.style.color = "gray"
 		EnabledInArch2.style.color = "gray"
 		
-		cloudRadio.title = strNotInArchive
+		'cloudRadio.title = strNotInArchive
 		retdRadio.title = strNotInArchive
 		holdCheck.title = strNotInArchive
 	End If	
@@ -686,7 +687,7 @@ Sub SetFormContent
 	retdRadio.disabled = Not boolInArch
 	retdRadio.checked = boolInArch
     
-	cloudRadio.disabled = Not (boolInArch And boolDebug)
+	'cloudRadio.disabled = Not (boolInArch And boolDebug)
 	    
 	holdCheck.disabled = Not boolInArch
 
@@ -767,12 +768,12 @@ End Sub
 
 
 Sub ShowHelp
-	objShell.Run """L:\CaseFile_Archive\Resources\05_Client\eDiscovery_EDMS_Uploader.pdf"""
+	objShell.Run """L:\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf"""
 End Sub
 
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="L:\CaseFile_Archive\Resources\05_Client\eDiscovery_EDMS_Uploader.pdf">[Help]</a></span>
+<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="L:\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf">[Help]</a></span>
 <h5>Select where to send the file to:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
