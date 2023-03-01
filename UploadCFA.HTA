@@ -75,7 +75,7 @@ Dim strCommand  : strCommand  = appShareHTA.commandLine
 Dim strFilePath : strFilePath = Trim(Split(strCommand, "/f")(1))
 
 ' Pull out the no remote discovery option from the command string.
-Dim boolNoDisco   : boolNoDisco   = InStr(strCommand, " /nodisco ") >0
+Dim boolNoDisco   : boolNoDisco   = True 'InStr(strCommand, " /nodisco ") >0
 
 Dim aryFilePaths : aryFilePaths = getPathsFromArgs(strFilePath)
 strFilePath = aryFilePaths(0)
