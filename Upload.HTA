@@ -17,7 +17,7 @@
 </script>
 
 <head>
-<title>eDiscovery EDMS Uploader</title>
+<title>eDiscovery EDMS Uploader v2</title>
 <HTA:APPLICATION ID="appShareHTA"
      APPLICATIONNAME="eDiscovery Uploader"
      SCROLL="no"
@@ -42,16 +42,16 @@ Dim logLvl : logLvl = infoLvl
 Dim objFSO   : Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim objShell : Set objShell = CreateObject("WScript.Shell")
 
-Const archPath  = "\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CaseFile_Archive\"
+Const archPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\"
 
 'Dim inputPath : inputPath  = archPath & "_FOR_DISCLOSURE\eDiscovery_EDMS\"
 'Dim scanPath : scanPath = inputPath & "eDisCityAtty\"
 'Dim eSharePath : eSharePath = inputPath & "eShare\"
 'Const scanPath  = "\\ad\dfs\Scans\sdat-scan01\eDisCityAtty\"
-Const scanPath  = "\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
-Const cloudPath  = "\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
-Const eSharePath = "\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
-Const placePath = "\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CaseFile_Archive\Resources\05_Client\Digital Media Place Holder.dotx"
+Const scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
+Const cloudPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
+Const eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
+Const placePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\05_Client\Digital Media Place Holder.dotx"
 
 Dim aryAcroPaths : aryAcroPaths = Array( "C:\Program Files\Adobe\Acrobat 10.0\",_
 										 "C:\Program Files\Adobe\Acrobat 2015\",_
@@ -59,7 +59,7 @@ Dim aryAcroPaths : aryAcroPaths = Array( "C:\Program Files\Adobe\Acrobat 10.0\",
 										 "C:\Program Files (x86)\Adobe\Acrobat DC\",_
 										 "C:\Program Files (x86)\Adobe\Acrobat 2015\",_
 										 "C:\Program Files (x86)\Adobe\Acrobat 11.0")
-' Const strGSPath	= "\\ad\dfs\sdat-shared\attorney\CRIMCASE\CaseFile_Archive\Resources\GPLGS\bin"
+' Const strGSPath	= "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\GPLGS\bin"
 Const strGSPath	= "C:\Program Files\gs\gs9.53.3\bin\gswin64c.exe"
 Dim strGSExePath : strGSExePath = strGSPath & "gswin64c.exe"
 
@@ -785,13 +785,13 @@ End Sub
 
 
 Sub ShowHelp
-	' objShell.Run """\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf"""
+	' objShell.Run """\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf"""
 	objShell.Run """L:\CaseFile_Archive\Resources\05_Client\eDiscovery_EDMS_Uploader.pdf"""
 End Sub
 
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="\\ad\dfs\SDAT-Shared\Attorney\CRIMCASE\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf">[Help]</a></span>
+<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\eDiscovery_EDMS_Uploader.pdf">[Help]</a></span>
 <h5>Select where to send the file to:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
