@@ -42,8 +42,8 @@ Dim logLvl : logLvl = infoLvl
 Dim objFSO   : Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim objShell : Set objShell = CreateObject("WScript.Shell")
 
-Const archPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\"
-Const clientPath= "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\05_Client\"
+Const archPath  = "L:\CaseFile_Archive\"
+Const clientPath= "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\05_Client\"
 Dim placePath : placePath = clientPath & "Digital Media Place Holder.dotx"
 
 Const scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
@@ -78,7 +78,9 @@ strFilePath = aryFilePaths(0)
 
 Dim strFileName : strFileName = objFSO.GetFileName(strFilePath)
 Dim strCMSCase  : strCMSCase = Split(strFileName, "_")(0)
-Dim boolInArch : boolInArch = (InStr(strFilePath, archPath) And InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase))>0
+
+	'Determine if the file is already in the archive
+Dim boolInArch : boolInArch = (InStr(strFilePath, archPath)>0) And (InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase)>0) 'InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase))>0
 
 Dim aryImageTypes : aryImageTypes = Array("jpg", "png", "gif", "pict", "raw", "tif", "tiff")
 Dim boolDebug : boolDebug = objFSO.FileExists(objFSO.BuildPath(objShell.ExpandEnvironmentStrings("%USERPROFILE%"), "debug.txt"))
@@ -108,6 +110,7 @@ If boolDebug Then
 	logLvl = debugLvl
 	ShowMessage debugLvl, "Debug mode enabled" & vbCrLf & strCommand
 	ShowMessage debugLvl, Join(aryFilePaths, vbCrLf)
+    ShowMessage debugLvl, "boolInArch:" & boolInArch & vbCrLf & objFSO.GetParentFolderName(strFilePath)
 ElseIf False Then ' set to true to warn users.
 	ShowMessage fatalLvl, "Undergoing Maintenance. Try again later."
 End If
@@ -150,19 +153,18 @@ Sub Upload
 				objShell.Run "https://filecloud.sandiego.gov/"
 				
 			ElseIf objButton.value = "Retained" Then
-				Dim strSubject : strSubject = "New Discovery is available on City Attorney case " & CMSNumber.Value
-				Dim strBody : strBody = vbCrLf & strSubject & ". Please pick up at our office and allow for approximately 5-10 minutes for us to process your request. " &_ 
-							"Bring this notice with you for faster service." & vbCrLf & vbCrLf &_
+				Dim strSubject : strSubject = CMSNumber.Value & " - New Discovery on City Attorney case" 
+				Dim strBody : strBody = strSubject & "." & vbCrLf & vbCrLf & "You may also  pick up at our office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
+							"Bring this notice with you for faster service." & vbCrLf &_
 							"$0.25 - Page Photocopy; $7.45 - CD or DVD; $9.00 - Cassette Tape" & vbCrLf & vbCrLf &_
 							"Office of the City Attorney" & vbCrLf &_
 							"1200 3rd Ave #700" & vbCrLf &_
 							"San Diego, CA 92101" & vbCrLf &_
 							"619-533-5500"  & vbCrLf & vbCrLf &_
 							"For CA office reference:" & vbCrLf & Join(aryFilePaths, vbCrLf)
-				strSubject = strSubject & "&body=" & strBody
 				
-				objShell.Run "OUTLOOK.EXE /c ipm.note /m ""&subject=" & strSubject & """"
-				'		 	""" /a " & """" & strFilePath & """"
+				objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & "[encrypt30] " & strSubject & "&body=" & strBody &_
+						 	""" /a " & """" & strFilePath & """"
 				
 			Else
 				If NOT objFSO.FolderExists(archPath & CMSNumber.Value) Then
