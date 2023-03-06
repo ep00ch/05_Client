@@ -34,7 +34,7 @@
 </head>
 <body onhelp="ShowHelp">
 <span id = "Processing"></span>
-<script language="VBScript">
+<script language = "VBScript">
 
 Const debugLvl = 5: Const infoLvl = 4 : Const warnLvl = 3: Const errorLvl = 2 : Const fatalLvl = 1 : Const silentLvl = 0
 Dim logLvl : logLvl = infoLvl
@@ -42,15 +42,15 @@ Dim logLvl : logLvl = infoLvl
 Dim objFSO   : Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim objShell : Set objShell = CreateObject("WScript.Shell")
 
-Const archPath  = "L:\CaseFile_Archive\"
-Const clientPath= "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\Resources\05_Client\"
-Dim placePath : placePath = clientPath & "Digital Media Place Holder.dotx"
+Const archPath  = "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\"
+Dim clientPath : clientPath = archPath & "Resources\05_Client\"
 
 Const scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
 Const cloudPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
 Const eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
 
-Dim aryAcroPaths : aryAcroPaths = Array( "C:\Program Files\Adobe\Acrobat 10.0\",_
+Dim aryAcroPaths: aryAcroPaths = Array("C:\Program Files\Adobe\Acrobat 10.0\",_
+										 "C:\Program Files\Adobe\Acrobat DC\",_
 										 "C:\Program Files\Adobe\Acrobat 2015\",_
 										 "C:\Program Files\Adobe\Acrobat 11.0\",_
 										 "C:\Program Files (x86)\Adobe\Acrobat DC\",_
@@ -79,10 +79,12 @@ strFilePath = aryFilePaths(0)
 Dim strFileName : strFileName = objFSO.GetFileName(strFilePath)
 Dim strCMSCase  : strCMSCase = Split(strFileName, "_")(0)
 
-	'Determine if the file is already in the archive
-Dim boolInArch : boolInArch = (InStr(strFilePath, archPath)>0) And (InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase)>0) 'InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase))>0
+'Determine if the file is already in the archive.
+'archPath would be an ideal test for this, but sometines we get the mapped drive and sometimes the network url
+'so just check to see if the last folder of archPath is in the filepath
+Dim boolInArch : boolInArch = (InStr(strFilePath, objFSO.GetFileName(archPath))>0) And (InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase)>0)
 
-Dim aryImageTypes : aryImageTypes = Array("jpg", "png", "gif", "pict", "raw", "tif", "tiff")
+Dim aryImageTypes : aryImageTypes = Array("jpg", "jpeg", "png", "gif", "pict", "raw", "tif", "tiff")
 Dim boolDebug : boolDebug = objFSO.FileExists(objFSO.BuildPath(objShell.ExpandEnvironmentStrings("%USERPROFILE%"), "debug.txt"))
 Dim boolPics : boolPics =  	UBound(aryFilePaths) > 0
 Dim boolGS : boolGS =  		objFSO.FolderExists(strGSPath)
@@ -130,7 +132,7 @@ Sub Window_OnLoad
     SetFormContent()
 End Sub
 
-Sub Upload
+Sub Upload()
 	Dim strCopyPath
 	
 	If Len(CMSNumber.Value) < 6 Or InStr(CMSNumber.Value, "M") = 1 Then
@@ -154,7 +156,7 @@ Sub Upload
 				
 			ElseIf objButton.value = "Retained" Then
 				Dim strSubject : strSubject = CMSNumber.Value & " - New Discovery on City Attorney case" 
-				Dim strBody : strBody = strSubject & "." & vbCrLf & vbCrLf & "You may also  pick up at our office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
+				Dim strBody : strBody = strSubject & "." & vbCrLf & vbCrLf & "You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
 							"Bring this notice with you for faster service." & vbCrLf &_
 							"$0.25 - Page Photocopy; $7.45 - CD or DVD; $9.00 - Cassette Tape" & vbCrLf & vbCrLf &_
 							"Office of the City Attorney" & vbCrLf &_
@@ -162,10 +164,10 @@ Sub Upload
 							"San Diego, CA 92101" & vbCrLf &_
 							"619-533-5500"  & vbCrLf & vbCrLf &_
 							"For CA office reference:" & vbCrLf & Join(aryFilePaths, vbCrLf)
-				
-				objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & "[encrypt30] " & strSubject & "&body=" & strBody &_
+				For Each strFilePath In aryFilePaths
+					objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & "[encrypt30] " & strSubject & "&body=" & strBody &_
 						 	""" /a " & """" & strFilePath & """"
-				
+				Next
 			Else
 				If NOT objFSO.FolderExists(archPath & CMSNumber.Value) Then
 					ShowMessage errorLvl, "This discovery cannot be sent to eShare without an Initial Disclosure."
@@ -451,7 +453,7 @@ End Function
 ' Returns:	ReSizeImage result : path to the created file, in the %TEMP% folder.
 '*********************************************************
 Function OptimizeImageToSize(strPath, strOpt, intMaxDimInch)
-	Dim intRes, intMaxDim
+	Dim intRes
 
 	Select Case LCase(strOpt)
 		Case "screen"
@@ -467,8 +469,8 @@ Function OptimizeImageToSize(strPath, strOpt, intMaxDimInch)
 		Case Else '"default"
 			intRes = 72
 	End Select
-	intMaxDim = intMaxDimInch*intRes
-	OptimizeImageToSize = ReSizeImage(strPath, intRes, intMaxDim)
+
+	OptimizeImageToSize = ReSizeImage(strPath, intRes, intMaxDimInch * intRes)
 End Function
 
 '*********************************************************
@@ -582,7 +584,7 @@ End Function
 Sub PrintPlaceHolder
 	Set objWord = CreateObject("Word.Application")
 	objWord.Visible = True
-	Set objDoc = objWord.Documents.Add(placePath)
+	Set objDoc = objWord.Documents.Add(clientPath & "Digital Media Place Holder.dotx")
 	
 	Set objSelection = objWord.Selection
 	objSelection.EndKey 6, 0
@@ -669,7 +671,7 @@ Sub SetFormContent
 	End If
 	
 	'Set up "office" radio buttons
-	'Why does document.getElementsByClassName() not work? 
+	'Why is document.getElementsByClassName() not supported?
 	If boolInArch Then
 		DisabledInArch.style.color = "gray"
 		
@@ -709,6 +711,7 @@ Sub SetFormContent
 
   	'Set up "CMSNumber" text input
 	CMSNumber.disabled = boolInArch
+	FileType.disabled = boolInArch
   		
   	'Set up "Send Photograph Summary" button
   	Dim boolCanSummary : boolCanSummary = False
@@ -789,15 +792,15 @@ End Sub
 
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10;">[Press F1 for Help]</span>
-<h5>Select where to send the file to:</h5>
+<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
+<h5>Select the file destination:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
 </span><br>
 
 <span id = "EnabledAsDisco" class="EnabledAsDisco">
 <span id = "EnabledInArch" class="EnabledInArch">
-<input type="radio" id="cloudRadio" name="office" value="FileCloud" disabled> FileCloud<br>
+<input type="radio" id="cloudRadio" name="office" value="OneDrive" disabled> OneDrive<br>
 <input type="radio" id="retdRadio"  name="office" value="Retained" disabled> Retained Counsel
 </span><br><br>
 <input type="radio" id="pdRadio" name="office" value="PrimaryDefender"  > Primary Public Defender<br>
@@ -812,7 +815,7 @@ End Sub
 <!--{{InsertControlsHere}}-Do not remove this line-->
 CMS Case Number:  <input type="text" name="CMSNumber" disabled><br>
 Type of file: 
- <select name="FileType">
+ <select name="FileType" disabled>
   <option value="">Default</option>
   <option value="CNF">Left Side-Confidential</option>
   <option value="URD">Left Side-Needs Review/Redaction</option>
