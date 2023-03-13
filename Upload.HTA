@@ -1,19 +1,18 @@
-<script language="VBScript">
-  Sub DoResize
-  	Dim intSize : intSize = 640
-  	Dim posLeft, posTop
+<script language="javascript">
+//Run the subroutine to position the window before the anything is rendered.
+DoResize();
+
+function DoResize() {
+	var intSize = 640;
   	
-    'resize   
-    window.resizeTo intSize, intSize
+	//resize
+	window.resizeTo(intSize, intSize);
 
-    posLeft = (Document.ParentWindow.Screen.AvailWidth - intSize) / 2
-    posTop = (Document.ParentWindow.Screen.AvailHeight - intSize) / 2     
-    'move to centerscreen
-    window.moveTo posLeft, posTop
-  End sub
-
-  'Run the subroutine to position the window before the anything is rendered.
-  DoResize() 
+	var posLeft = (document.parentWindow.screen.availWidth - intSize) / 2;
+	var posTop = (document.parentWindow.screen.availHeight - intSize) / 2;     
+	//move to centerscreen
+	window.moveTo(posLeft, posTop);
+}
 </script>
 
 <head>
@@ -34,234 +33,261 @@
 </head>
 <body onhelp="ShowHelp">
 <span id = "Processing"></span>
-<script language="VBScript">
+<script language="javascript">
 
-Const debugLvl = 5: Const infoLvl = 4 : Const warnLvl = 3: Const errorLvl = 2 : Const fatalLvl = 1 : Const silentLvl = 0
-Dim logLvl : logLvl = infoLvl
+String.prototype.trim = function () {
+    return this.replace(/^\s+|\s+$/g, '');
+}
 
-Dim objFSO   : Set objFSO = CreateObject("Scripting.FileSystemObject")
-Dim objShell : Set objShell = CreateObject("WScript.Shell")
+var debugLvl = 5, infoLvl = 4, warnLvl = 3, errorLvl = 2, fatalLvl = 1, silentLvl = 0;
+var logLvl = infoLvl
 
-Const archPath  = "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\"
-Dim clientPath : clientPath = archPath & "Resources\05_Client\"
+//Convenience Global objects 
+var objFSO = new ActiveXObject("Scripting.FileSystemObject")
+var objShell = new ActiveXObject("WScript.Shell")
 
-Const scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
-Const cloudPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
-Const eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
+var archPath = "\\\\ad\\dfs\\sdat-shared2\\Attorney\\CRIMCASE\\CaseFile_Archive\\"
+var clientPath = archPath + "Resources\\05_Client\\"
 
-Dim aryAcroPaths : aryAcroPaths = Array( "C:\Program Files\Adobe\Acrobat 10.0\",_
-										 "C:\Program Files\Adobe\Acrobat 2015\",_
-										 "C:\Program Files\Adobe\Acrobat 11.0\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat DC\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat 2015\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat 11.0")
-Const strGSPath	= "C:\Program Files\gs\gs9.53.3\bin\gswin64c.exe"
-Dim strGSExePath : strGSExePath = strGSPath & "gswin64c.exe"
+var scanPath = "\\\\ad\\dfs\\SDAT-Shared2\\Attorney\\CRIMCASE\\CRIMFORM\\eDiscovery_EDMS\\eDisCityAtty\\"
+var cloudPath = "\\\\ad\\dfs\\SDAT-Shared2\\Attorney\\CRIMCASE\\CRIMFORM\\eDiscovery_EDMS\\FileCloud\\"
+var eSharePath = "\\\\ad\dfs\\SDAT-Shared2\\Attorney\\CRIMCASE\\CRIMFORM\\eDiscovery_EDMS\\eShare\\"
 
-' Make sure we have network connection
-If NOT (objFSO.FolderExists(scanPath) AND objFSO.FolderExists(archPath) ) Then
-	ShowMessage errorLvl, "Scanner Folder Not Found " & vbCRLF & scanPath & vbCRLF &_
-		"Try Restarting computer to restore network connection."
-	Self.Close()
-End If
+var aryAcroPaths = new Array(   "C:\\Program Files\\Adobe\\Acrobat 10.0\\",
+                                "C:\\Program Files\\Adobe\\Acrobat DC\\",
+		    					"C:\\Program Files\\Adobe\\Acrobat 2015\\",
+                                "C:\\Program Files\\Adobe\\Acrobat 11.0\\",
+								"C:\\Program Files (x86)\\Adobe\\Acrobat DC\\",
+								"C:\\Program Files (x86)\\Adobe\\Acrobat 2015\\",
+								"C:\\Program Files (x86)\\Adobe\\Acrobat 11.0")
 
-' Pull out the file path argument from the command string.
-Dim strCommand  : strCommand  = appShareHTA.commandLine 
-Dim strFilePath : strFilePath = Trim(Split(strCommand, "/f:")(1))
+var strGSPath = "C:\\Program Files\gs\\gs9.53.3\\"
+var strGSExePath = strGSPath + "bin\\gswin64c.exe"
 
-' Pull out the enable remote discovery option from the command string.
-Dim boolNoDisco   : boolNoDisco   = InStr(strCommand, " /disco ") <=0
+// Make sure we have network connection
+if (!(objFSO.FolderExists(scanPath) && objFSO.FolderExists(archPath))) {
+    ShowMessage(fatalLvl, "Scanner Folder Not Found \n" + scanPath + "\nTry Restarting computer to restore network connection.");
+    self.Close()
+}
 
-Dim aryFilePaths : aryFilePaths = getPathsFromArgs(strFilePath)
-strFilePath = aryFilePaths(0)
+// Pull out the file path argument from the command string.
+var strCommand = document.getElementById('appShareHTA').commandLine
+var strFilePath = strCommand.split('/f:')[1].trim()
 
-Dim strFileName : strFileName = objFSO.GetFileName(strFilePath)
-Dim strCMSCase  : strCMSCase = Split(strFileName, "_")(0)
+// Pull out the enable remote discovery option from the command string.
+var boolNoDisco = strCommand.indexOf(" /disco ") <= 0
 
-'Determine if the file is already in the archive.
+var aryFilePaths = getPathsFromArgs(strFilePath)
+
+strFilePath = aryFilePaths[0]
+	
+var strFileName = objFSO.GetFileName(strFilePath)
+var strCMSCase = strFileName.split("_")[0]
+
+/*Determine if the file is already in the archive.
 'archPath would be an ideal test for this, but sometines we get the mapped drive and sometimes the network url
-'so just check to see if the last folder of archPath is in the filepath
-Dim boolInArch : boolInArch = (InStr(strFilePath, objFSO.GetFileName(archPath))>0) And (InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase)>0)
+'so just check to see if the last folder of archPath is in the filepath*/
+var boolInArch = (strFilePath.indexOf(objFSO.GetFileName(archPath)) > 0) && (objFSO.GetParentFolderName(strFilePath).indexOf(strCMSCase) > 0);
 
-Dim aryImageTypes : aryImageTypes = Array("jpg", "png", "gif", "pict", "raw", "tif", "tiff")
-Dim boolDebug : boolDebug = objFSO.FileExists(objFSO.BuildPath(objShell.ExpandEnvironmentStrings("%USERPROFILE%"), "debug.txt"))
-Dim boolPics : boolPics =  	UBound(aryFilePaths) > 0
-Dim boolGS : boolGS =  		objFSO.FolderExists(strGSPath)
+// presence of debug.txt file enables debugging
+var boolDebug = objFSO.FileExists(objFSO.BuildPath(objShell.ExpandEnvironmentStrings("%USERPROFILE%"), "debug.txt"))
+// GhostScript installed?
+var boolGS = objFSO.FolderExists(strGSPath)
+// Acrobat Pro installed?
+var boolPro = checkForPro(aryAcroPaths)
+// Multiple picture files?
+var boolPics = (checkForPics(aryFilePaths) > 1)
 
-Dim boolPro : boolPro = False
-Dim strAcroPath
-For Each  strAcroPath In aryAcroPaths
-	If objFSO.FolderExists(strAcroPath) Then
-		boolPro = True
-		Exit For
-	End If
-Next
- 
-If boolPics Then
-	boolPics = False
-	Dim strImageTypes
-	For Each strImageTypes In aryImageTypes
-		If LCase(objFSO.GetExtensionName(strFileName)) = strImageTypes Then
-		 	boolPics = True
-		End If
-	Next
-End If
+if (boolDebug) {
+    logLvl = debugLvl
+    ShowMessage(debugLvl, "Debug mode enabled \n" + strCommand);
+    ShowMessage(debugLvl, aryFilePaths.join("\n"));
+    ShowMessage(debugLvl, "boolInArch:" + boolInArch + "\n" & objFSO.GetParentFolderName(strFilePath));
+} else if (false) { // set to true to warn users.
+    ShowMessage(fatalLvl, "Undergoing Maintenance. Try again later.");
+}
 
-If boolDebug Then
-	logLvl = debugLvl
-	ShowMessage debugLvl, "Debug mode enabled" & vbCrLf & strCommand
-	ShowMessage debugLvl, Join(aryFilePaths, vbCrLf)
-    ShowMessage debugLvl, "boolInArch:" & boolInArch & vbCrLf & objFSO.GetParentFolderName(strFilePath)
-ElseIf False Then ' set to true to warn users.
-	ShowMessage fatalLvl, "Undergoing Maintenance. Try again later."
-End If
+window.onload = SetFormContent;
 
-Dim strFileHelp : strFileHelp = TypeErrorForFile(strFileName)
+/*********************************************************
+ ' Purpose:     Check to see if the array of files includes any
+ '                picture files. Calls checkIfPic() for each file.
+ ' Inputs:     aryFiles: array of paths to possible image files.
+ ' Returns:    total count of the image files.
+ '*********************************************************/
+function checkForPics(aryFiles) {
+    var ret = 0
+    for (var i=0; i < aryFiles.length; i++) {
+        if (checkIfPic(aryFiles[i])) {
+            ret++
+        }
+    }
+    return ret
+}
 
-If NOT (objFSO.FileExists(strFilePath) OR objFSO.FolderExists(strFilePath)) Then
-	strFileHelp = "The file could not be found. Try again."
-End If
+function checkIfPic(strFile) {
+     var aryImageTypes = new Array("jpeg", "jpg", "png", "gif", "pict", "raw", "tif", "tiff")
 
-If Len(strFileHelp) Then
-	ShowMessage fatalLvl, strFileName & " is not a valid data file. " & strFileHelp
-End If
+    for (var i=0; i < aryImageTypes.length; i++) {
+        if (objFSO.GetExtensionName(strFile).toLowerCase() == aryImageTypes[i]) {
+            return true
+        }
+    }
+     return false
+}
 
-Sub Window_OnLoad
-  	'This method will be called when the application loads
-    SetFormContent()
-End Sub
+/*********************************************************
+ ' Purpose:    Check to see if Acrobat Pro (with edit functions) is installed
+ '             by testing if client computer has one of the program paths installed.
+ ' Inputs:     aryAcroPaths: array of paths for Acrobat Pro software.
+ ' Returns:    true if Acrobat Pro installed, or else false.
+ '*********************************************************/
+function checkForPro(aryAcroPaths) {
+    for (var i=0; i<aryAcroPaths.length; i++) {
+        if (objFSO.FolderExists(aryAcroPaths[i]) == true) {
+            return true
+        }
+    }
+     return false
+}
 
-Sub Upload
-	Dim strCopyPath
-	
-	If Len(CMSNumber.Value) < 6 Or InStr(CMSNumber.Value, "M") = 1 Then
-		ShowMessage errorLvl, "You must enter a valid CMS Case Number"
-		Exit Sub
-	End If
-	
-	Processing.InnerHTML = "Processing... "
-	SubmitButton.InnerHTML = ""
-	
-	For Each objButton in office
-		If objButton.Checked Then
-		
-			If objButton.value = "Archive" Then
-				strCopyPath = scanPath
-				objShell.Run "explorer.exe /e," & archPath & CMSNumber.Value
-				
-			ElseIf objButton.value = "FileCloud" Then
-				strCopyPath = cloudPath
-				objShell.Run "https://filecloud.sandiego.gov/"
-				
-			ElseIf objButton.value = "Retained" Then
-				Dim strSubject : strSubject = CMSNumber.Value & " - New Discovery on City Attorney case" 
-				Dim strBody : strBody = strSubject & "." & vbCrLf & vbCrLf & "You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
-							"Bring this notice with you for faster service." & vbCrLf &_
-							"$0.25 - Page Photocopy; $7.45 - CD or DVD; $9.00 - Cassette Tape" & vbCrLf & vbCrLf &_
-							"Office of the City Attorney" & vbCrLf &_
-							"1200 3rd Ave #700" & vbCrLf &_
-							"San Diego, CA 92101" & vbCrLf &_
-							"619-533-5500"  & vbCrLf & vbCrLf &_
-							"For CA office reference:" & vbCrLf & Join(aryFilePaths, vbCrLf)
-				For Each strFilePath In aryFilePaths
-					objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & "[encrypt30] " & strSubject & "&body=" & strBody &_
-						 	""" /a " & """" & strFilePath & """"
-				Next
-			Else
-				If NOT objFSO.FolderExists(archPath & CMSNumber.Value) Then
-					ShowMessage errorLvl, "This discovery cannot be sent to eShare without an Initial Disclosure."
-     				Exit Sub
-				Else
-					strCopyPath = eSharePath & objButton.value & "\"
-					objShell.Run "explorer.exe /e," & archPath & CMSNumber.Value
-				End If
-			End If
-			Exit For
-  		End if
-	Next
+function Upload() {
+     var strCopyPath
+     
+    if (!CMSNumber.value || CMSNumber.value.length < 6 || CMSNumber.value.slice(0,1) == "M") {
+          ShowMessage(errorLvl, "You must enter a valid CMS Case Number")
+          return;
+     }
+     
+     Processing.innerHTML = "Processing... "
+     SubmitButton.innerHTML = ""
 
-	If placeholder.Checked Then 
-		PrintPlaceHolder()
-	End If
-	
-	If IsEmpty(strCopyPath) Then
- 		Self.Close()
-	End If
-	
-	If pdfsummary.Checked Then
-		If boolPics Then
-			'Generate the contact sheet
-			If boolGS Then
-				strFilePath = ContactSheetGS(aryFilePaths)
-			ElseIf boolPro Then
-				strFilePath = ContactSheet(aryFilePaths)
-			End If
-			If Len(strFilePath) Then
-				'Send the contact sheet to the recipient 
-				objFSO.MoveFile strFilePath, _
-					objFSO.BuildPath(strCopyPath, CMSNumber.Value & "_PHT_" & "Photo-Summary."& objFSO.GetExtensionName(strFilePath))
-			
-				'Send the original photos just to the archive
-				If Not boolInArch Then
-					strCopyPath = scanPath
-				Else
-					Self.Close()
-				End If
-			Else
-				ShowMessage errorLvl, "Cannot convert pictures to PDF"
-			End If
-		Else
-			ShowMessage errorLvl, "These are not Pictures."
-		End If
-	End If
-	
-	For Each strFilePath In aryFilePaths
-		Dim boolError : boolError = False
-		Dim strFileHelp : strFileHelp = TypeErrorForFile(strFilePath)
-		
-		If Len(strFileHelp) > 0 Then
-			boolError = True
-			ShowMessage errorLvl, strFileHelp
-		ElseIf objFSO.FolderExists(strFilePath) Then
-			'zip it
-			strFilePath = CompressFolder(strFilePath)
-			
-		ElseIf objFSO.GetFile(strFilePath).Size > 740000000 Then
-			boolError = True
-			ShowMessage errorLvl, "This file is too big to proceess:" & vbCrLf & strFilePath
-		End If
-		
-		If boolError Then
-			'skip processing 
-		ElseIf objFSO.FileExists(strFilePath) Then
-			objFSO.CopyFile strFilePath, objFSO.BuildPath(strCopyPath, FormatFileName(objFSO.GetFileName(strFilePath)))
-		Else
-			ShowMessage errorLvl, "File Not Found " & vbCRLF & strFilePath
-		End If
-	Next
+    for (var i=0; i < office.length; i++) {
+        var objButton = office[i]
+          if (objButton.checked) {
+               
+               if (objButton.value == "Archive") {
+                    strCopyPath = scanPath;
+                    objShell.Run("explorer.exe /e," + archPath + CMSNumber.value)
+                    
+               } else if (objButton.value == "FileCloud") {
+                    strCopyPath = cloudPath
+                    objShell.Run("https://filecloud.sandiego.gov/")
+                    
+               } else if (objButton.value == "Retained") {
+                    var strSubject = CMSNumber.value+ " - New Discovery on City Attorney case"
+                    var strBody = strSubject + ".\n\n" + 
+                    "You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request.\n" +
+                    "Bring this notice with you for faster service.\n" + 
+                    "$0.25 - Page Photocopy; $7.45 - CD or DVD; $9.00 - Cassette Tape\n" + 
+                    "Office of the City Attorney\n" + 
+                    "1200 3rd Ave #700\n" + 
+                    "San Diego, CA 92101\n" + 
+                    "619-533-5500\n\n" + 
+                    "For CA office reference:\n" + aryFilePaths.join("\n")
+                    for (strFilePath in aryFilePaths) {
+                         objShell.Run("OUTLOOK.EXE /c ipm.note /m \"?subject=" + "[encrypt30] " + strSubject + "&body=" + strBody +
+                                      '" /a ' + '"' + strFilePath + '"')
+                    }
+               } else {
+                    if (objFSO.FolderExists(archPath + CMSNumber.value)) {
 
-    Self.Close()
-End Sub
+                         strCopyPath = eSharePath + objButton.value + "\\"
+                         objShell.Run("explorer.exe /e," + archPath + CMSNumber.value) // Open the folder so you can check the file goes in.
+                    } else {
+                         ShowMessage(errorLvl, "This discovery cannot be sent to eShare without an Initial Disclosure.");
+                         return
+                    }
+               }
+               break;
+          }
+     }
+     
+     if (placeholder.Checked) {
+          PrintPlaceHolder()
+     }
+     
+     if (strCopyPath == "") {
+         self.close()
+     }
+     
+     if (pdfsummary.checked) {
+          if (boolPics) {
+               // Generate the contact sheet
+               if (boolGS) {
+                    strFilePath = ContactSheetGS(aryFilePaths)
+               } else if (boolPro) {
+                    strFilePath = ContactSheet(aryFilePaths)
+              }
+              //alert(strFilePath + ";\n" + objFSO.BuildPath(strCopyPath, CMSNumber.value + "_PHT_" + "Photo-Summary." + objFSO.GetExtensionName(strFilePath)))
+               if (strFilePath) {
+                    // Send the contact sheet to the recipient  
+                   objFSO.MoveFile(strFilePath, objFSO.BuildPath(strCopyPath, CMSNumber.value + "_PHT_" + "Photo-Summary." + objFSO.GetExtensionName(strFilePath)))
+                    // Send the original photos just to the archive
+                    if (!boolInArch) {
+                         strCopyPath = scanPath
+                    } else {
+                        self.close()
+                    }
+               } else {
+                    ShowMessage(errorLvl, "Cannot convert pictures to PDF")
+               }
+          } else {
+               ShowMessage(errorLvl, "These files are not pictures.")
+          }
+     }
+     
+    for (var i = 0; i < aryFilePaths.length; i++) {
+        strFilePath = aryFilePaths[i]
 
-Function FormatFileName(strFileName)
-	Dim strDestName : strDestName = strFileName
-
-	If strCMSCase <> CMSNumber.Value OR FileType.Value <> "" Then
-   		' Get rid of '_'s that will confuse the server.
-		strDestName = Replace(strDestName, "_", "-")
-
-		If FileType.Value <> "" Then
-			' Add the destination folder for the file type
-			strDestName = FileType.Value & "_" & strDestName
-		End If
-		strDestName = CMSNumber.Value & "_" & strDestName
-	End If
-	FormatFileName = strDestName
-
-End Function
+         var boolError = false
+         var strFileHelp = TypeErrorForFile(strFilePath)
+          
+         if (strFileHelp) {
+              boolError = true
+              ShowMessage(errorLvl, strFileHelp)
+         } else if (objFSO.FolderExists(strFilePath)) {
+               // zip the file
+               strFilePath = CompressFolder(strFilePath)
+               
+         } else if (objFSO.GetFile(strFilePath).size > 740000000) {
+              boolError = true
+              ShowMessage(errorLvl, "This file is too big to proceess:\n" + strFilePath)
+         }
+          
+        if (boolError) {
+            //skip processing
+        } else if (objFSO.FileExists(strFilePath)) {
+            objFSO.CopyFile(strFilePath, objFSO.BuildPath(strCopyPath, FormatFileName(objFSO.GetFileName(strFilePath) )))
+        } else {
+            ShowMessage(errorLvl, "File Not Found \n" + strFilePath)
+        }
+     }
+     
+    self.close()
+}
 
 
-'*********************************************************
+/*********************************************************
+ ' Purpose:    Clean up a file name for submitting to the server
+ '*********************************************************/
+function FormatFileName(strFileName) {
+     var strDestName = strFileName;
+     
+     if (!(strCMSCase == CMSNumber.value && FileType.value== "")) {
+          // Get rid of '_'s that will confuse the server.
+          strDestName = strDestName.replace("_", "-");
+          
+          if (FileType.value != "") {
+               // Add the destination folder for the file type
+               strDestName = FileType.value + "_" + strDestName;
+          }
+          strDestName = CMSNumber.value + "_" + strDestName;
+     }
+     return strDestName;
+}
+
+/*********************************************************
 ' Purpose:	Turn the script arguments into an array of paths.
 ' 			If there are spaces in a path, it will be quoted.
 ' 			If there are not spaces, it will not be quoted.
@@ -269,270 +295,545 @@ End Function
 ' 			when there are multiple paths, some quoted, some not.
 ' Inputs:	strPathList: string with a bunch of quoted or unquoted paths.
 ' Returns:	Array of paths to the specified files.
-'*********************************************************
-Function getPathsFromArgs(strPathList)
+'*********************************************************/
+function getPathsFromArgs(strPathList) {
 
-	Dim boolInQuote	: boolInQuote = False
-	Dim numStartLoc : numStartLoc = 1
-	Dim numEndLoc   : numEndLoc = 1
-	Dim numEndFinal : numEndFinal = Len(strPathList)
-	
-	While numEndLoc < numEndFinal
-		Dim numLength
-		numEndLoc = InStr(numStartLoc, strPathList, """")
-		If numEndLoc <= 0 Then numEndLoc = numEndFinal + 1
-		
-		numLength = (numEndLoc - numStartLoc)
-		
-		If boolInQuote Then
-			strPaths = strPaths & Mid( strPathList, numStartLoc, numLength) & vbCrLf
-			numEndLoc = numEndLoc + 1
-		ElseIf numLength > 1 Then
-			strPaths = strPaths & Replace( Trim( Mid( strPathList, numStartLoc, numLength)), " ", vbCrLf ) & vbCrLf
-		End If
-		numStartLoc = numEndLoc + 1
-					
-		boolInQuote = Not boolInQuote
-		
-		'WScript.Echo(strPaths & numStartLoc & " " & numEndLoc & " " & numEndFinal)
-	Wend
-	strPaths = Left(strPaths, Len(strPaths) - Len(vbCrLf))
-	getPathsFromArgs = Split(strPaths, vbCrLf)
-End Function
+    var boolInQuote = false;
+    var numEndFinal = strPathList.length;
+    var strPaths = "";
 
+    for (var numStartLoc = 0, numEndLoc =0; numEndLoc < numEndFinal; numStartLoc = numEndLoc+1) {
+        numEndLoc = strPathList.indexOf('"', numStartLoc);
+        if (numEndLoc < 0) { numEndLoc = numEndFinal }
 
+        if (boolInQuote) {
+            strPaths = strPaths + strPathList.slice(numStartLoc, numEndLoc) + "\n";
+        } else if ((numEndLoc - numStartLoc) > 1) {
+            strPaths = strPaths + strPathList.slice(numStartLoc, numEndLoc).replace(" ", "\n") + "\n";
+        }
 
-'*********************************************************
-' Purpose:	Consolidate multiple image files into one PDF
-'			with file name caption at a reduced resolution
-'			Using ghostScript.
-' Inputs:	aryFiles: array of JPEG or GIF file paths.
-' Returns:	Path to the created file, in the %TEMP% folder.
-'*********************************************************
-Function ContactSheetGS(aryFiles)
-	Dim strViewList : strViewList = ""
-	ContactSheetGS = objFSO.BuildPath(objShell.ExpandEnvironmentStrings( "%TEMP%" ), objFSO.GetTempName & ".pdf")
-	'Run ghostscript quiet, with pdf output, ebook setting:150dpi, output to the temp file,
-	'	caption of the first file name to set the caption box size,
-	'	include modified caption.ps for caption code, 
-	'	include standard viewjpeg.pd and viewjpeg.ps for view image code.
-	Dim strGSCommand : strGSCommand = """" & strGSExePath & """" &_ 
-		" -dQUIET -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook" &_
-		" -sOutputFile=""" & ContactSheetGS & """" &_
-		" -sCap=""" & objFSO.GetFileName(aryFiles(0)) & """" &_
-		" """ & clientPath & "caption.ps" & """ """ & strGSPath & "viewjpeg.ps" & """ """ &  strGSPath & "viewjpeg.ps"""
-		
-	For Each strPicPath In aryFiles
-		' Each file gets a flag "-sCap=" to set the cation text for modified caption.ps,
-		' and a call to viewJPEG (or viewGIF) to display the image, and a showpage to complete the page.  
-		' -sCap="IMG_245.jpg" -c "(D:/-/-/IMG_245.jpg) viewJPEG showpage"
-		If LCase(objFSO.GetExtensionName(strPicPath)) = "jpg" Then
-			strViewList = strViewList & " -sCap=""" & objFSO.GetFileName(strPicPath) & """" & " -c ""(" & strPicPath & ") viewJPEG showpage"""
-			
-		ElseIf LCase(objFSO.GetExtensionName(strPicPath)) = "gif" Then
-			strViewList = strViewList & " -sCap=""" & objFSO.GetFileName(strPicPath) & """" & " -c ""(" & strPicPath & ") viewGIF  showpage"""
-		End If
-	Next
-	'Apparent path separator bug in viewJPEG
-	strViewList = Replace(strViewList, "\", "/")
+        boolInQuote = (!boolInQuote);
+        ShowMessage(debugLvl, numStartLoc + " " + numEndLoc + " " + (numEndLoc - numStartLoc) +" " + strPathList.slice(numStartLoc, numEndLoc))
+    }
+    strPaths = strPaths.slice(0, strPaths.length -"\n".length);
+    ShowMessage(debugLvl, strPaths.split("\n"))
+    return strPaths.split("\n");
+}
 
-	strGSCommand = strGSCommand & strViewList
-	shellExec(strGSCommand)
-	
-	If Not objFSO.FileExists(ContactSheetGS) Then
-		 ContactSheetGS =  ""
-	End If
-End Function
+/*********************************************************
+ ' Purpose:    Consolidate multiple image files into one PDF
+ '			with file name caption at a reduced resolution
+ '			Using ghostScript.
+ ' Inputs:	aryFiles: array of JPEG or GIF file paths.
+ ' Returns:	Path to the created file, in the %TEMP% folder.
+ '*********************************************************/
+function ContactSheetGS(aryFiles) {
+     var strViewList = "";
+     var strPDFPath = objFSO.BuildPath(objShell.ExpandEnvironmentStrings( "%TEMP%" ), objFSO.GetTempName() + ".pdf");
+     /* Run ghostscript quiet, with pdf output, ebook setting:150dpi, output to the temp file,
+      '	caption of the first file name to set the caption box size,
+      '	include modified caption.ps for caption code,
+      '	include standard viewjpeg.pd and viewjpeg.ps for view image code.*/
+     var strGSCommand = '"' + strGSExePath + '"' +
+     " -dQUIET -dBATCH -dNOPAUSE -sDEVICE=pdfwrite -dPDFSETTINGS=/ebook" +
+     " -sOutputFile=\"" + strPDFPath + '"' +
+     " -sCap=\"" + objFSO.GetFileName(aryFiles[0]) + '"' +
+     '"' + clientPath + "caption.ps" + '" "' + strGSPath + "lib/viewjpeg.pd" + '" "' +  strGSPath + "lib/viewjpeg.ps" + '"';
+     
+    for (var i=0; i < aryFiles.length; i++) {
+        var strPicPath = aryFiles[i]
+          /*' Each file gets a flag "-sCap=" to set the cation text for modified caption.ps,
+           ' and a call to viewJPEG (or viewGIF) to display the image, and a showpage to complete the page.
+           ' -sCap="IMG_245.jpg" -c "(C:/-/-/IMG_245.jpg) viewJPEG showpage" */
+          var strExt = objFSO.GetExtensionName(strPicPath).toLowerCase()
+          var strGSLib
+          
+          switch (strExt) {
+               case "jpeg":
+               case "jpg":
+                    strGSLib = "viewJPEG"
+                    break
+               case "gif":
+                    strGSLib = "viewGIF"
+                    break
+          }
+          if (strGSLib) {
+               strViewList = strViewList + " -sCap=\"" + objFSO.GetFileName(strPicPath) + "\" -c \"(" + strPicPath + ") " + strGSLib + " showpage\"";
+          }
+     }
+     // Apparent path separator bug in viewJPEG
+     strViewList = strViewList.replace("\\", "/");
+     
+     strGSCommand = strGSCommand + strViewList;
+     shellExec(strGSCommand);
+     
+     if (!objFSO.FileExists(strPDFPath)) {
+          return
+     }
+     return strPDFPath
+}
 
+/*********************************************************
+ ' Purpose:	Consolidate multiple image files into one PDF
+ '			with file name caption at a reduced resolution
+ '			Using Acrobat and WIA.
+ ' Inputs:	aryFiles: array of JPEG or GIF file paths.
+ ' Returns:	Path to the created file, in the %TEMP% folder.
+ '*********************************************************/
+function ContactSheet(aryFiles) {
+     var AcroApp = new ActiveXObject("AcroExch.App")
+     var PDDoc   = new ActiveXObject("AcroExch.PDDoc")
 
-'*********************************************************
-' Purpose:	Consolidate multiple image files into one PDF
-'			with file name caption at a reduced resolution
-'			Using Acrobat and WIA.
-' Inputs:	aryFiles: array of JPEG or GIF file paths.
-' Returns:	Path to the created file, in the %TEMP% folder.
-'*********************************************************
-Function ContactSheet(aryFiles)
-	Dim AcroApp :	Set AcroApp = CreateObject("AcroExch.App")
-	Dim PDDoc : Set PDDoc = CreateObject("AcroExch.PDDoc")
-	Dim strPicPath, strPicExt, blnRet
-	
-	Dim strPDFPath : strPDFPath = objFSO.BuildPath(objShell.ExpandEnvironmentStrings( "%TEMP%" ), objFSO.GetTempName & ".pdf")
-	ContactSheet = strPDFPath
+     var strPDFPath = objFSO.BuildPath(objShell.ExpandEnvironmentStrings( "%TEMP%" ), objFSO.GetTempName() + ".pdf")
 
-	'Create the summary PDF.
-	If PDDoc.Create <> True Then
-		 ShowMessage errorLvl, "Unable to create new PDF file. The Acrobat application may not support editing."
-		 AcroApp.Exit()
-		Exit Function
-	End If
-	
-	For Each strPicPath In aryFiles
-		Dim strPicName : strPicName = objFSO.GetFileName(strPicPath)
-	 	Dim strFileExt : strFileExt = LCase(objFSO.GetExtensionName(strPicPath))
-	 	
-	 	Dim i, boolIsImage : boolIsImage = False
-	 	For i = 0 to UBound(aryImageTypes)
-	 		If strFileExt = aryImageTypes(i) Then
-	 			boolIsImage = True
-	 			i = 100
-	 		End If
-	 	Next
+     //Create an empty PDF.
+     if (PDDoc.Create() == false) {
+          ShowMessage(errorLvl, "Unable to create new PDF file. The Acrobat application may not support editing.")
+          AcroApp.Exit()
+          return
+     }
+     
+    for (var i=0; i < aryFiles.length; i++) {
+        var strPicPath = aryFiles[i]
+          var strPicName = objFSO.GetFileName(strPicPath)
+                    
+          if (checkIfPic(strPicPath)) {
+               var tmpPicPath = OptimizeImageToSize(strPicPath, "pcscreen", 10)
+               
+               if (AddImageCapPage(PDDoc, tmpPicPath, strPicName) != true) {
+                    ShowMessage(errorLvl, "Failed to add file to PDF: " + tmpPicPath)
+               }
+               
+               if (PDDoc.Save((1 | 32), strPDFPath) != true) {
+                    ShowMessage(errorLvl, "Failed to save file: " + strPDFPath)
+               }
+               
+               if (tmpPicPath != strPicPath) {
+                    objFSO.GetFile(tmpPicPath).Delete()
+               }
+          }
+     }
+     
+     // Fill in pdf properties.
+     PDDoc.SetInfo("Title", "Med Resolution Photo Summary")
+     PDDoc.SetInfo("Author", "San Diego City Attorney's Office")
+     PDDoc.SetInfo("Subject", "CA case number: " + CMSNumber.value)
+     PDDoc.SetInfo("Keywords", "%CA$13$PHT%,CA%" + CMSNumber.value)
+     
+     if (PDDoc.Save((1 | 32), strPDFPath) != true) {
+          ShowMessage(errorLvl, "Failed to save " + strPDFPath)
+          return
+     }
+     
+     PDDoc.Close()
+     // AcroApp.CloseAllDocs()
+     AcroApp.Exit()
+     return strPDFPath;
+}
 
-		If boolIsImage Then
-					
-			Dim tmpPicPath : tmpPicPath = OptimizeImageToSize(strPicPath, "pcscreen", 10)
-			If AddImageCapPage(PDDoc, tmpPicPath, strPicName) <> True Then
-				ShowMessage errorLvl, "Failed to add file to PDF: " & tmpPicPath
-			End If
-			
-			If PDDoc.Save(1 Or 32, strPDFPath) <> True Then
-				ShowMessage errorLvl, "Failed to save file: " & strPDFPath
-			End If
-			
-			If tmpPicPath <> strPicPath Then
-				objFSO.GetFile(tmpPicPath).Delete
-			End If
-		End If
-	Next
-	
-	' Fill in pdf properties.
-	PDDoc.SetInfo "Title", "Low Res Photograph Summary Sheet"
-	PDDoc.SetInfo "Author", "San Diego City Attorney's Office"
-	PDDoc.SetInfo "Subject", "CA case number: " & CMSNumber.Value
-	PDDoc.SetInfo "Keywords", "%CA$13$PHT%,CA%" & CMSNumber.Value
-	
-	If PDDoc.Save(1 Or 32, strPDFPath) <> -1 Then
-				ShowMessage errorLvl, "Failed to save " & strPDFPath
-	End If
-		
-	PDDoc.Close()
-	'AcroApp.CloseAllDocs()
-	AcroApp.Exit()
-End Function
+/*********************************************************
+ ' Purpose:	Add an image to the PDDoc, with specified caption.
+ ' Inputs:	PDDoc: "AcroExch.PDDoc" object.
+ '			strPicPath: Path to the image to add.
+ '			strPicName: Caption to add.
+ 'Returns:	true (-1) if successful. false (0) if error.
+ '*********************************************************/
+function AddImageCapPage(PDDoc, strPicPath, strPicName) {
+    var AVDoc = new ActiveXObject("AcroExch.AVDoc")
+    var boolRet = (AVDoc.Open(strPicPath, strPicName)  && AVDoc.IsValid())
 
-'*********************************************************
-' Purpose:	Add an image to the PDDoc, with specified caption. 
-' Inputs:	PDDoc: "AcroExch.PDDoc" object.
-'			strPicPath: Path to the image to add.
-'			strPicName: Caption to add.
-'Returns:	True (-1) if successful. False (0) if error.
-'*********************************************************
-Function AddImageCapPage(PDDoc, strPicPath, strPicName)
-	Dim AVDoc : Set AVDoc = CreateObject("AcroExch.AVDoc")
-	Dim blnRet : blnRet = AVDoc.Open(strPicPath, strPicName)
-	AddImageCapPage = False
-	
-	If blnRet <> True Or Not AVDoc.IsValid Then
-		ShowMessage errorLvl, "Unable to open file: " & tmpPicPath
-	Else
-		Dim PDTmpDoc : Set PDTmpDoc = AVDoc.GetPDDoc()
-		
-		'Insert picture page into the pdf Doc
-		blnRet = PDDoc.InsertPages(PDDoc.GetNumPages-1, PDTmpDoc, 0, PDTmpDoc.GetNumPages, False)
-		If blnRet <> True Then
-			ShowMessage errorLvl, "Could not insert image: " & strPicPath
-		Else
-			AddCaption PDDoc, PDDoc.GetNumPages-1, strPicName
-			AddImageCapPage = True
-		End If
-				
-		PDTmpDoc.Close()
-	End If
-	
-	AVDoc.Close(1)
+     if (boolRet) {
+          var PDTmpDoc = AVDoc.GetPDDoc()
+          //Insert picture page into the pdf Doc
+         boolRet = PDDoc.InsertPages(PDDoc.GetNumPages()-1, PDTmpDoc, 0, PDTmpDoc.GetNumPages(), false)
+          if (boolRet) {
+                AddCaption(PDDoc, PDDoc.GetNumPages()-1, strPicName)
+          } else {
+               ShowMessage(errorLvl, "Could not insert image: " + strPicPath)
+          }
+          PDTmpDoc.Close()
+     } else {
+          ShowMessage(errorLvl, "Unable to open file: " + strPicPath)
+     }
+     
+     AVDoc.Close(1)
+     return boolRet;
+}
 
-End Function
-'*********************************************************
-' Purpose:	Interface to ReSizeImage with easy inputs and DPI calculation.
-' Inputs:	strPath: Path to the image file.
-' 			strOpt: Acrobat Distiller optimization pre-set 
-'					(screen, ebook, printer, prepress).
-'			intMaxDimInch : Maximum dimension in inches.
-' Returns:	ReSizeImage result : path to the created file, in the %TEMP% folder.
-'*********************************************************
-Function OptimizeImageToSize(strPath, strOpt, intMaxDimInch)
-	Dim intRes, intMaxDim
+/*********************************************************
+ ' Purpose:	Interface to ReSizeImage with easy inputs and DPI calculation.
+ ' Inputs:	strPath: Path to the image file.
+ ' 			strOpt: Acrobat Distiller optimization pre-set
+ '					(screen, ebook, printer, prepress).
+ '			intMaxDimInch: Maximum dimension in inches.
+ ' Returns:	result of ReSizeImage  : path to the created file, in the %TEMP% folder.
+ '*********************************************************/
+function OptimizeImageToSize(strPath, strOpt, intMaxDimInch) {
+     var intRes
+     
+     switch (strOpt.toLowerCase()) {
+          case "pcscreen":
+               intRes = 96
+               break
+          case "ebook":
+               intRes = 150
+               break
+          case "printer":
+               intRes = 300
+               break
+          case "prepress":
+               intRes = 300
+               break
+          case "screen":
+          default:
+               intRes = 72
+     }
+     return ReSizeImage(strPath, intRes, intMaxDimInch*intRes)
+}
 
-	Select Case LCase(strOpt)
-		Case "screen"
-			intRes = 72
-		Case "pcscreen"
-			intRes = 96
-		Case "ebook"
-			intRes = 150
-		Case "printer"
-			intRes = 300
-		Case "prepress"
-			intRes = 300
-		Case Else '"default"
-			intRes = 72
-	End Select
-	intMaxDim = intMaxDimInch*intRes
-	OptimizeImageToSize = ReSizeImage(strPath, intRes, intMaxDim)
-End Function
+/*********************************************************
+ ' Purpose:	ReSize an image, including adjusting DPI, so that
+ '			images with same settings will fill PDF page the same way.
+ ' Inputs:	strPath: Path to the image file.
+ ' 			intRes: desired resolution DPI.
+ '			intMaxDim Maximum dimension in pixels.
+ ' Returns:	Path to the created file, in the %TEMP% folder.
+ '*********************************************************/
+function ReSizeImage(strPath, intRes, intMaxDim) {
+     var wiaImageFile = new ActiveXObject("WIA.ImageFile")
+     var wiaImageProcess = new ActiveXObject("WIA.ImageProcess")
+     var ret = strPath
+     
+     wiaImageProcess.Filters.Add(wiaImageProcess.FilterInfos("Exif").FilterID)
+     wiaImageProcess.Filters.Add(wiaImageProcess.FilterInfos("Exif").FilterID)
+     wiaImageProcess.Filters.Add(wiaImageProcess.FilterInfos("Scale").FilterID)
+     ShowMessage(debugLvl, "Resize " + strPath)
+     
+    if (wiaImageFile.LoadFile(strPath) != 0 ) {
+        if (wiaImageFile.Width > intMaxDim || wiaImageFile.Height > intMaxDim) {
+            var intNewWidth, intNewHeight
 
-'*********************************************************
-' Purpose:	ReSize an image, including adjusting DPI, so that
-'			images with same settings will fill PDF page the same way. 
-' Inputs:	strPath: Path to the image file.
-' 			intRes: desired resolution DPI.
-'			intMaxDim: Maximum dimension in pixels.
-' Returns:	Path to the created file, in the %TEMP% folder.
-'*********************************************************
-Function ReSizeImage(strPath, intRes, intMaxDim)
-	Dim wiaImageFile : Set wiaImageFile = CreateObject("WIA.ImageFile")
-	Dim wiaImageProcess : Set wiaImageProcess = CreateObject("WIA.ImageProcess")
-	ReSizeImage = strPath
-				
-	wiaImageProcess.Filters.Add wiaImageProcess.FilterInfos("Exif").FilterID
-	wiaImageProcess.Filters.Add wiaImageProcess.FilterInfos("Exif").FilterID	
-	wiaImageProcess.Filters.Add wiaImageProcess.FilterInfos("Scale").FilterID
-	ShowMessage debugLvl, "Resize " & strPath
-	If wiaImageFile.LoadFile(strPath) = False Then 
-		If wiaImageFile.Width > intMaxDim Or wiaImageFile.Height > intMaxDim Then
-			Dim intNewWidth, intNewHeight
-			
-			ReSizeImage = objFSO.BuildPath(objShell.ExpandEnvironmentStrings( "%TEMP%" ),_
-										  objFSO.GetTempName & "." & objFSO.GetExtensionName(strPath) )
-										  
-			If wiaImageFile.Width > wiaImageFile.Height Then
-				intNewWidth = intMaxDim
-				intNewHeight = Round( (wiaImageFile.Height/wiaImageFile.Width) * intMaxDim)
-			Else
-				intNewHeight = intMaxDim
-				intNewWidth = Round( (wiaImageFile.Width/wiaImageFile.Height) * intMaxDim)
-			End If
+            ret = objFSO.BuildPath(objShell.ExpandEnvironmentStrings("%TEMP%"),
+                objFSO.GetTempName() + "." + objFSO.GetExtensionName(strPath))
 
-			'ShowMessage debugLvl, "Resize " & strPath & vbCRLF &_
-			'	"From: " & wiaImageFile.Height & " x " & wiaImageFile.Width & " @ " & wiaImageFile.HorizontalResolution & " DPI" & vbCrLf &_
-			'	"To  : " & intNewHeight & " x " & intNewWidth & " @ " & intRes & " DPI"
+            if (wiaImageFile.Width > wiaImageFile.Height) {
+                intNewWidth = intMaxDim
+                intNewHeight = ((wiaImageFile.Height / wiaImageFile.Width) * intMaxDim).toFixed(0)
+            } else {
+                intNewHeight = intMaxDim
+                intNewWidth = ((wiaImageFile.Width / wiaImageFile.Height) * intMaxDim).toFixed(0)
+            }
 
-			'vertical resolution
-			wiaImageProcess.Filters(1).Properties("ID") = 282
-			wiaImageProcess.Filters(1).Properties("Value") = intRes
-			
-			'horizontal resolution			
-			wiaImageProcess.Filters(2).Properties("ID") = 283
-			wiaImageProcess.Filters(2).Properties("Value") = intRes
-						
-			wiaImageProcess.Filters(3).Properties("MaximumWidth") = intNewWidth
-			wiaImageProcess.Filters(3).Properties("MaximumHeight") = intNewHeight
-			
-			
-			Set wiaImageFile = wiaImageProcess.Apply(wiaImageFile)
-			
-			If wiaImageFile.SaveFile(ReSizeImage) <> False Then
-				ShowMessage errorLvl, "Unable to save image " & ReSizeImage 
-				ReSizeImage = strPath
-			End If
-		End If
-	Else
-		ShowMessage errorLvl, "Unable to load image " & strPath 
-	End If
-End Function
+            /*ShowMessage(debugLvl, "Resize " + strPath + "\n" +\
+             "From: " + wiaImageFile.Height + " x " + wiaImageFile.Width + " @ " + wiaImageFile.HorizontalResolution + " DPI\n" +
+             "To  : " + intNewHeight + " x " + intNewWidth + " @ " + intRes + " DPI"*/
 
+            //vertical resolution
+            wiaImageProcess.Filters(1).Properties("ID") = 282
+            wiaImageProcess.Filters(1).Properties("Value") = intRes
 
+            //horizontal resolution
+            wiaImageProcess.Filters(2).Properties("ID") = 283
+            wiaImageProcess.Filters(2).Properties("Value") = intRes
+
+            wiaImageProcess.Filters(3).Properties("MaximumWidth") = intNewWidth
+            wiaImageProcess.Filters(3).Properties("MaximumHeight") = intNewHeight
+
+            wiaImageFile = wiaImageProcess.Apply(wiaImageFile)
+
+            if (wiaImageFile.SaveFile(ret) != undefined) {
+                ShowMessage(errorLvl, "Unable to save image " + ret)
+                ret = strPath
+            }
+        }
+    } else {
+        ShowMessage(errorLvl, "Unable to load image " + strPath)
+    }
+
+    return ret
+}
+
+/*********************************************************
+ ' Purpose:     add a caption to the given PDDoc on a specific page
+ '              getPageBox() does not work. see VBscript
+ '*********************************************************/
+/*function AddCaptio2n(PDDoc, intPage, strCaption) {
+    var objJSO = PDDoc.GetJSObject()
+    // Calculate the page width
+    var aRect = objJSO.getPageBox("Media", intPage)
+    
+    var intWid = aRect[2] - aRect[0]
+
+    var objJSO = PDDoc.GetJSObject()
+    // Add the caption box
+    aRect[0] = intWid/3
+    aRect[1] = 40
+    aRect[2] = intWid/3*2
+    aRect[3] = 10
+
+    // Add the caption box
+    var objTitleBox = objJSO.AddField("Caption_" + intPage, "text", intPage, aRect)
+
+    // Set the caption text
+    objTitleBox.value= strCaption
+     objTitleBox.alignment = "center"
+     objTitleBox.textFont = "Courier"
+     objTitleBox.textSize = 12
+    // objTitleBox.fillColor = new Array("G", .6)
+     // Flatten the field into a text box.
+     objJSO.flattenPages()
+}
+
+/*********************************************************
+ ' Purpose:	Run a shell command and return the results.
+ ' Inputs:	command: the command to run.
+ ' Returns:	output from the command or the return code.
+ '*********************************************************/
+function shellExec(command) {
+     var exec =  objShell.Exec(command)
+     var tmpOutput = ""
+     var intLoopCount = 0
+     var ret = false
+     ShowMessage(infoLvl, "exec command: \n" + command)
+     
+     do {
+          tmpOutput = tmpOutput + exec.StdOut.ReadAll() + "\n" + exec.StdErr.ReadAll()
+     } while (exec.Status || intLoopCount > 30000);
+     
+     if (tmpOutput.length > 0) {
+          ShowMessage(infoLvl, "Exec output: \n" + tmpOutput)
+          ret = tmpOutput
+     }
+     return ret
+}
+
+/*********************************************************
+ ' Purpose:	Prepare and print a place holder sheet
+ '			with paths to the media files to go into the case file.
+ '*********************************************************/
+function PrintPlaceHolder () {
+     var objWord = new ActiveXObject("Word.Application")
+     objWord.Visible = true
+     var objDoc = objWord.Documents.Add(clientPath + "Digital Media Place Holder.dotx")
+     
+     var objSelection = objWord.Selection
+     objSelection.EndKey(6, 0)
+     
+     objSelection.TypeParagraph()
+     objSelection.TypeText(aryFilePaths.join("\n"))
+     
+     objDoc.PrintOut()
+     objDoc.Close(0) // Don't Save
+     objWord.Quit()
+}
+
+/*********************************************************
+ ' Purpose:	Try to use the right preview for the type of document.
+ '*********************************************************/
+function EmbedPreview () {
+     window.resizeTo(640,820)
+     if (objFSO.FolderExists(strFilePath)) {
+          Preview.innerHTML = strFilePath + "<br><br>Directory contents will be compressed before sharing or archiving."
+          return
+     } else if (aryFilePaths.length > 0) {
+          Preview.innerHTML = strFilePath + "<br><br>All selected files will be sent with the same CMS information."
+     }
+     
+     Preview.innerHTML = strFilePath + "<br><iframe src='" + strFilePath + "' width='200' height='290'></iframe>"
+}
+
+/*********************************************************
+ ' Purpose:    Compress a folder into a zip archive.
+ ' Inputs:     strFolderPath: path to the folder to compress
+ ' Returns:    path to the zip file.
+ '*********************************************************/
+function CompressFolder(strFolderPath) {
+    var zipFile
+    var intLoopCount = 20000
+     
+    var i = 2
+    zipFile = objFSO.BuildPath( objShell.ExpandEnvironmentStrings( "%TEMP%" ),
+             objFSO.GetBaseName(strFolderPath) + ".zip")
+          
+    while (objFSO.FileExists(zipFile)) {
+        zipFile = objFSO.BuildPath(objFSO.GetParentFolderName(zipFile),
+            objFSO.GetBaseName(strFolderPath) + " (" + i + ").zip")
+        i++
+    }
+
+    var objTmpFSO = new ActiveXObject("Scripting.FileSystemObject")
+    
+    with (objTmpFSO.CreateTextFile(zipFile, true)) {
+        Write(string.fromCharCode(80,75,5,6,18,0))
+        Close
+    }
+    var tmpObjShell = new ActiveXObject("Shell.Application")
+    var zipDir = tmpObjShell.NameSpace(zipFile)
+    var folderDirItems = tmpObjShell.NameSpace(strFolderPath).Items
+          
+    zipDir.CopyHere(folderDirItems)
+          
+    while ( zipDir.Items.Count < folderDirItems.Count) { //AND intLoopCount > 0
+        //intLoopCount--
+        if (intLoopCount <= 0) {
+            ShowMessage(fataLvl, "Timed out while zipping folder with large or numerous files. Do it manually.")
+        }
+    }
+
+    return zipFile
+}
+
+function SetFormContent () {
+     var strNotInArchive = "File must be in the Case File Archive first."
+     var strInArchive    = "File is already in the Case File Archive."
+    FileName.innerHTML = strFileName
+     // Set up top line, document title
+     var numFileIdx = aryFilePaths.length-1
+
+    if (numFileIdx > 0) {
+        FileName.innerHTML = strFileName + " (+ " + numFileIdx + " other files)"
+     } else {
+        FileName.innerHTML = strFileName
+     }
+     
+     // Set up "office" radio buttons
+     // Why is document.getElementsByClassName() not supported?
+     if (boolInArch) {
+          DisabledInArch.style.color = "gray"
+          
+          archRadio.title = strInArchive
+          CMSNumber.title = strInArchive
+     } else {
+          EnabledInArch.style.color = "gray"
+          EnabledInArch2.style.color = "gray"
+          
+          //cloudRadio.title = strNotInArchive
+          retdRadio.title = strNotInArchive
+          holdCheck.title = strNotInArchive
+     }
+     
+     archRadio.disabled = boolInArch
+     archRadio.checked = (! boolInArch)
+     
+     retdRadio.disabled = (! boolInArch)
+     retdRadio.checked = boolInArch
+     
+     if (boolNoDisco) {
+          Document.title = "CaseFile_Archive Uploader v2.1"
+          // Disable discovery options if specified from command line
+          archRadio.disabled = boolNoDisco
+          retdRadio.disabled = boolNoDisco
+          retdRadio.checked = (! boolNoDisco)
+          pdRadio.disabled = boolNoDisco
+          adRadio.disabled = boolNoDisco
+          acRadio.disabled = boolNoDisco
+          mcRadio.disabled = boolNoDisco
+          EnabledAsDisco.style.color = "gray"
+     }
+     
+     //cloudRadio.disabled = (!(boolInArch && boolDebug))
+     holdCheck.disabled = (! boolInArch)
+     
+     // Set up "CMSNumber" text input
+     CMSNumber.disabled = boolInArch
+     FileType.disabled = boolInArch
+     
+     // Set up "Send Photograph Summary" button
+    var boolCanSummary = (boolPics & (boolPro || boolGS))
+
+     if (!boolPics) {
+          summCheck.title = "Select more than one picture to generate Summary."
+          EnabledIfPics.style.color = "gray"
+     } else if (!(boolPro || boolGS)) {
+          summCheck.title = "PDF Authoring Software not installed."
+          EnabledIfPics.style.color = "gray"
+     }
+     
+     summCheck.disabled = (! boolCanSummary)
+     summCheck.checked = boolCanSummary
+     
+     // Check if the first part of the filename is probably a case number of some sort
+     if (strCMSCase.slice(2, 5) * 1) {
+          // Additional split on " " makes uploading 911 calls easier
+          CMSNumber.value= strCMSCase.split(" ")[0]
+     }
+ }
+
+ /*********************************************************
+ ' Purpose:    check to see if file type should not be sent to archive
+ '                  and generate an appropriate error.
+ ' Inputs:     strPath: path to the file to check
+ ' Returns:    an error string or nothing if no error.
+ '*********************************************************/
+function TypeErrorForFile(strPath) {
+    var ret
+
+    switch (objFSO.GetExtensionName(strPath).toLowerCase()) {
+        case "cda":
+            ret = "Rip this disc with Windows Media Player before uploading."
+            break;
+        case "dxa": // Proprietary surveillance software.
+            ret = "Provide a copy of this CD instead of uploading it."
+            break;
+        case "exe":
+            ret = "Provide a copy of this CD instead of uploading it."
+            break;
+        case "lnk":
+            ret = "Open the file location of the shortcut and upload that file instead."
+            break;
+    }
+    if (ret) {
+        return objFSO.GetFileName(strPath) + " is not a valid data file. " + ret
+    }
+    return
+}
+
+/*********************************************************
+ ' Purpose:    Show an alert message with prefix based on the given error level
+ ' Inputs:     intLvl: level of the error
+ '             strMessage: message to show
+ '*********************************************************/
+function ShowMessage(intLvl, strMessage) {
+    var strPrefix = ": "
+    switch (intLvl) {
+          case debugLvl:
+               strPrefix = "DEBUG "	+ strPrefix
+               break
+          case infoLvl:
+               strPrefix = "INFO "	+ strPrefix
+               break
+          case warnLvl:
+               strPrefix = "WARNING " + strPrefix
+               break
+          case errorLvl:
+               strPrefix = "ERROR "	+ strPrefix
+               break
+          case fatalLvl:
+               strPrefix = "FATAL " + strPrefix
+               break
+          case silentLvl:
+          default:
+               strPrefix = ""
+     }
+     if (intLvl <= logLvl) {
+          alert(strPrefix + strMessage)
+          //console.log(strPrefix + strMessage)
+     }
+     if (intLvl == fatalLvl) {
+         window.close()
+     }
+}
+
+/*********************************************************
+ ' Purpose:    Show the help document in a browser window
+ '*********************************************************/
+function ShowHelp () {
+     objShell.Run('"' + clientPath + "eDiscovery_EDMS_Uploader.pdf\"")
+}
+</script>
+
+<script language="VBScript">
+'I can't get this to work properly in Javascript. getPageBox() not returning correct value.
 Sub AddCaption(PDDoc, intPage, strCaption)
 	Dim objJSO : Set objJSO = PDDoc.GetJSObject()
 	' Calculate the page width
@@ -541,7 +842,7 @@ Sub AddCaption(PDDoc, intPage, strCaption)
 
 	'Add the caption box
 	Dim objTitleBox
-	Set objTitleBox = objJSO.AddField("Caption_" & intPage, "text", intPage, Array(Round(intWid/3), 40, Round((intWid/3)*2), 10))
+	Set objTitleBox = objJSO.AddField("Caption_" & intPage, "text", intPage, Array(Round(intWid/3), 40, Round(intWid/3*2), 10))
 	'Set the caption text
 	objTitleBox.Value = strCaption
 	objTitleBox.Alignment = "center"
@@ -552,246 +853,9 @@ Sub AddCaption(PDDoc, intPage, strCaption)
 	objJSO.flattenPages()
 End Sub
 
-'*********************************************************
-' Purpose:	Run a shell command and return the results.
-' Inputs:	command: the command to run.
-' Returns:	output from the command or the return code.
-'*********************************************************
-Function shellExec(command)
-	Dim exec: Set exec =  objShell.Exec(command)
-	Dim tmpOutput	:	tmpOutput = ""
-	Dim intLoopCount:	intLoopCount = 0
-
-	ShowMessage infoLvl, "exec command: "  & vbCrLf & command
-
-	Do 
-		tmpOutput = tmpOutput & exec.StdOut.ReadAll()
-		tmpOutput = tmpOutput & vbCrLf & Exec.StdErr.ReadAll()
-	Loop Until exec.Status OR intLoopCount > 30000
-	
-	If Len(tmpOutput) > 0 Then
-		ShowMessage infoLvl, "Exec output: " & vbCrLf & tmpOutput
-		shellExec = tmpOutput
-	End If
-End Function
-
-
-'*********************************************************
-' Purpose:	Prepare and print a place holder sheet 
-'			with paths to the media files to go into the case file.
-'*********************************************************
-Sub PrintPlaceHolder
-	Set objWord = CreateObject("Word.Application")
-	objWord.Visible = True
-	Set objDoc = objWord.Documents.Add(clientPath & "Digital Media Place Holder.dotx")
-	
-	Set objSelection = objWord.Selection
-	objSelection.EndKey 6, 0
-	
-	objSelection.TypeParagraph()
-	objSelection.TypeText Join(aryFilePaths,vbCRLF)
-	
-	objDoc.PrintOut()
-	objDoc.Close(0) ' Don't Save
-	objWord.Quit()
-End Sub
-
-'*********************************************************
-' Purpose:	Try to use the right preview for the type of document.
-'*********************************************************
-Sub EmbedPreview
-    window.resizeTo 640,820
-	If objFSO.FolderExists(strFilePath) Then
-		Preview.InnerHTML = strFilePath & "<br><br>Directory contents will be compressed before sharing or archiving."
-		Exit Sub
-	ElseIf UBound(aryFilePaths) > 0 Then
-		Preview.InnerHTML = strFilePath & "<br><br>All selected files will be sent with the same CMS information."
-	End If
-
-	Preview.InnerHTML = strFilePath & "<br><iframe src='" & strFilePath & "' width='200' height='290'></iframe>"
-End Sub
-
-Function CompressFolder(strFolderPath)
-    Dim zipFile 
-    Dim intLoopCount : intLoopCount = 20000
-    
-    With objFSO
-		Dim i : i = 2
-		zipFile = .BuildPath(_
-			objShell.ExpandEnvironmentStrings( "%TEMP%" ),_
-			.GetBaseName(strFolderPath) & ".zip")
-		
-		While .FileExists(zipFile)
-			zipFile = .BuildPath( _
-				.GetParentFolderName(zipFile),_
-				.GetBaseName(strFolderPath) & " (" & i & ").zip")
-			i = i + 1
-		WEnd
-	End With
-	
-    With CreateObject("Scripting.FileSystemObject")
-
-        With .CreateTextFile(zipFile, True)
-            .Write Chr(80) & Chr(75) & Chr(5) & Chr(6) & String(18, chr(0))
-	    	.Close
-        End With
-    End With
-
-    With CreateObject("Shell.Application")
-		Dim zipDir : Set zipDir = .NameSpace(zipFile)
-		Dim folderDirItems : Set folderDirItems = .NameSpace(strFolderPath).Items
-	
-	        zipDir.CopyHere(folderDirItems)
-	
-	 	While ( zipDir.Items.Count < folderDirItems.Count) 'AND intLoopCount > 0
-	
-		'	intLoopCount = intLoopCount - 1
-	  	WEnd
-	
-		If intLoopCount <= 0 Then
-			ShowMessage fataLvl, "Timed out while zipping folder with large or numerous files. Do it manually."
-		End If
-    End With
-
-    CompressFolder = zipFile
-End Function
-
-
-Sub SetFormContent
-	Const strNotInArchive = "File must be in the Case File Archive first."
-	Const strInArchive = "File is already in the Case File Archive."
-	
-	'Set up top line, document title
-	Dim numFileIdx : numFileIdx = UBound(aryFilePaths)
-	If numFileIdx > 0 Then
-		FileName.InnerHTML = strFileName & " (+ " & numFileIdx & " other files)"
-	Else
-		FileName.InnerHTML = strFileName
-	End If
-	
-	'Set up "office" radio buttons
-	'Why is document.getElementsByClassName() not supported?
-	If boolInArch Then
-		DisabledInArch.style.color = "gray"
-		
-		archRadio.title = strInArchive
-		CMSNumber.title = strInArchive
-	Else
-		EnabledInArch.style.color = "gray"
-		EnabledInArch2.style.color = "gray"
-		
-		'cloudRadio.title = strNotInArchive
-		retdRadio.title = strNotInArchive
-		holdCheck.title = strNotInArchive
-	End If	
-		
-	archRadio.disabled = boolInArch	
-	archRadio.checked = Not boolInArch
-    
-	retdRadio.disabled = Not boolInArch
-	retdRadio.checked = boolInArch
-
-    If boolNoDisco Then
-		Document.title = "CaseFile_Archive Uploader v2.1"
-		' Disable discovery options if specified from command line
-		archRadio.disabled = boolNoDisco
-		retdRadio.disabled = boolNoDisco
-		retdRadio.checked = Not boolNoDisco		
-		pdRadio.disabled = boolNoDisco
-		adRadio.disabled = boolNoDisco
-		acRadio.disabled = boolNoDisco
-		mcRadio.disabled = boolNoDisco
-		EnabledAsDisco.style.color = "gray"
-	End If
-
-	'cloudRadio.disabled = Not (boolInArch And boolDebug)
-	    
-	holdCheck.disabled = Not boolInArch
-
-  	'Set up "CMSNumber" text input
-	CMSNumber.disabled = boolInArch
-	FileType.disabled = boolInArch
-  		
-  	'Set up "Send Photograph Summary" button
-  	Dim boolCanSummary : boolCanSummary = False
-  	If Not boolPics Then
-  		summCheck.title = "Select more than one picture to generate Summary."
-  		EnabledIfPics.style.color = "gray"
-  	Elseif Not (boolPro Or boolGS) Then
-  	  	summCheck.title = "PDF Authoring Software not installed."
-  	  	EnabledIfPics.style.color = "gray"
-  	Else 'boolPics And (boolPro Or boolGS)
-  		boolCanSummary = True
-  	End If
-  	
-  	summCheck.disabled = Not boolCanSummary
-  	summCheck.checked = boolCanSummary
-
- 	If IsNumeric(Mid(strCMSCase, 2, 5)) Then
-		'Split on " " makes uploading 911 calls easier
-		CMSNumber.Value = Split(strCMSCase," ")(0)
-	End If
-	
-End Sub
-
-
-Function TypeErrorForFile(strPath)
-	TypeErrorForFile = ""
-
-	Select Case LCase(objFSO.GetExtensionName(strPath))
-		Case "cda"
-			TypeErrorForFile = "Rip this disc with Windows Media Player before uploading."
-		Case "dxa"
-			'Proprietary surveillance software.
-			TypeErrorForFile = "Provide a copy of this CD instead of uploading it."
-		Case "exe"
-			TypeErrorForFile = "Provide a copy of this CD instead of uploading it."
-		Case "lnk"
-			TypeErrorForFile = "Open the file location of the shortcut and upload that file instead."
-	End Select
-
-	If Len(TypeErrorForFile) > 0 Then
-		TypeErrorForFile = 	objFSO.GetFileName(strPath) & " is not a valid data file. " & TypeErrorForFile
-	End If
-End Function
-
-
-
-Sub ShowMessage(intLvl, strMessage)
-	Dim strPrefix : strPrefix = ": "
-	Select Case intLvl
-		Case debugLvl
-			strPrefix = "DEBUG"	& strPrefix
-		Case infoLvl
-			strPrefix = "INFO"	& strPrefix
-		Case warnLvl
-			strPrefix = "WARNING"	& strPrefix
-		Case errorLvl
-			strPrefix = "ERROR"	& strPrefix
-		Case fatalLvl
-			strPrefix = "FATAL"  & strPrefix
-		Case silentLvl
-		Case Else
-			strPrefix = ""
-	End Select
-
-	If intLvl <= logLvl Then
-		MsgBox(strPrefix & strMessage)
-		'Debug.WriteLine(strPrefix & strMessage)
-	End If
-	If intLvl = fatalLvl Then
-		Self.Close()
-	End If
-End Sub
-
-
-Sub ShowHelp
-	objShell.Run """" & clientPath & "eDiscovery_EDMS_Uploader.pdf"""
-End Sub
-
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
+<span id = "FileName">Loading...</span><span style="position:absolute;right:10px;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
 <h5>Select the file destination:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
@@ -829,7 +893,7 @@ Type of file:
   <option value="OTH">Other</option>
   <option value="PAS">Private Atty Share</option>
  </select><br><br>
-<span id = "SubmitButton"><input type="button" value="Submit File" type="submit" onClick="Upload"></span>
+<span id = "SubmitButton"><input type="button" value="Submit File" type="submit" onClick="Upload()"></span>
 <hr>
 <span id = "Preview"><input type="button" value="Preview" onClick="EmbedPreview"></span><br>
 </body>
