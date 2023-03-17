@@ -155,19 +155,9 @@ Sub Upload()
 				objShell.Run "https://filecloud.sandiego.gov/"
 				
 			ElseIf objButton.value = "Retained" Then
-				Dim strSubject : strSubject = CMSNumber.Value & " - New Discovery on City Attorney case" 
-				Dim strBody : strBody = strSubject & "." & vbCrLf & vbCrLf & "You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
-							"Bring this notice with you for faster service." & vbCrLf &_
-							"$0.25 - Page Photocopy; $7.45 - CD or DVD; $9.00 - Cassette Tape" & vbCrLf & vbCrLf &_
-							"Office of the City Attorney" & vbCrLf &_
-							"1200 3rd Ave #700" & vbCrLf &_
-							"San Diego, CA 92101" & vbCrLf &_
-							"619-533-5500"  & vbCrLf & vbCrLf &_
-							"For CA office reference:" & vbCrLf & Join(aryFilePaths, vbCrLf)
-				For Each strFilePath In aryFilePaths
-					objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & "[encrypt30] " & strSubject & "&body=" & strBody &_
-						 	""" /a " & """" & strFilePath & """"
-				Next
+				'Prepare an email with the files as attachments, then save the sent email as proof.
+				Call PrepEmail(aryFilePaths)
+				Call UploadNextSentEmail()
 			Else
 				If NOT objFSO.FolderExists(archPath & CMSNumber.Value) Then
 					ShowMessage errorLvl, "This discovery cannot be sent to eShare without an Initial Disclosure."
@@ -261,6 +251,85 @@ Function FormatFileName(strFileName)
 
 End Function
 
+'*********************************************************
+' Purpose:	Prepare (but do not send) an Outlook email with the specified attachements.
+' Inputs:	aryFilePaths: array of file paths to the attachments.
+'*********************************************************
+Sub PrepEmail(aryFilePaths)
+	objShell.Run "OUTLOOK.EXE"
+
+	Dim objOutlook : Set objOutlook = CreateObject("Outlook.Application")
+
+	Dim strFilePath
+	Dim strCaseNum : strCaseNum = CMSNumber.Value
+	Dim strSubject : strSubject = "[Encrypt30]+" & Left(objFSO.GetBaseName(aryFilePaths(0)), 40) & "+ New OCA Discovery"
+	Dim strBody : strBody = "Attention: New Discovery attached for City Attorney Case " & strCaseNum & "." & vbCrLf & vbCrLf &_
+						"You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
+						"Bring this notice with you for faster service." & vbCrLf &_
+						"$0.25 - Page Photocopy; $7.45 - CD or DVD; $9.00 - Cassette Tape" & vbCrLf & vbCrLf &_
+						"Office of the City Attorney" & vbCrLf &_
+						"1200 3rd Ave #700" & vbCrLf &_
+						"San Diego, CA 92101" & vbCrLf &_
+						"619-533-5500"  & vbCrLf & vbCrLf &_
+						"For CA office reference:" & vbCrLf & Join(aryFilePaths, vbCrLf)
+
+	Set objMail = objOutlook.CreateItem(0)
+	With objMail
+		.Subject = strSubject
+		.Body = strBody
+		For Each strFilePath In aryFilePaths
+			'objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & strSubject &_
+				'		"&body=" & strBody & strFilePath &_
+				'		""" /a " & """" & strFilePath & """"
+			.Attachments.Add(strFilePath)
+		Next
+		.Display(true) ' true make it modal. Script will wait here until window closes.
+	End With
+End Sub
+
+'*********************************************************
+' Purpose:	Wait until a new email shows up in the user's Outlook Sent Items.
+'			There is a possible race condition here since the email is being sent
+'			right when the modal window closes. Hopefully origSentCount is always set
+'			before the email gets to the sent items. 
+'			Verify that the user wants to save it, and store in Archive.
+'			This is the proof that the user emailed the discovery from PrepEmail().
+'*********************************************************
+Sub UploadNextSentEmail()
+	Const olFolderSentMail = 5
+	Dim objOutlook : Set objOutlook = CreateObject("Outlook.Application")
+
+	Dim objSentFldr : Set objSentFldr = objOutlook.GetNamespace("MAPI").GetDefaultFolder(olFolderSentMail)
+	Dim origSentCount : origSentCount = objSentFldr.Items.Count
+	
+	Dim i : i=0
+	Do Until objSentFldr.Items.Count > origSentCount
+		i = i+1
+		If i >1000 Then
+			MsgBox("It appears you closed the message without sending it. Exiting...")
+			Exit Sub
+		End If
+	Loop
+
+	Dim colSent : Set colSent = objSentFldr.Items '.Restrict("[Unread]=true")
+	'Set colSent = objFolder.Items.Restrict("[Subject] = " & strSubject)
+	colSent.Sort "[ReceivedTime]"
+
+	Dim objSentMsg: Set objSentMsg = colSent.Item(colSent.Count)
+	Dim res
+	res = MsgBox("Save sent Email message to " & objFSO.GetFileName(archPath) & "?" & vbCrLF &_
+				"To: " & objSentMsg.To & vbCrLF &_
+				"Subject: " & vbCrLF &_
+				 objSentMsg.Subject, vbYesNo)
+	If res = vbYes Then
+		' Get rid of text before and after "+" in the subject to simplify the file name.
+		Dim aryNames : aryNames = Split(Split(objSentMsg.Subject, "+")(1), "_")
+		' Insert the PAS (Private Attorney Share) file type.
+		aryNames(0)=aryNames(0) & "_PAS"
+		' Rebuild the file name for the server to parse.
+		objSentMsg.SaveAs objFSO.BuildPath(scanPath, Join(aryNames, "_") & ".msg")
+	End If
+End Sub
 
 '*********************************************************
 ' Purpose:	Turn the script arguments into an array of paths.
@@ -792,7 +861,7 @@ End Sub
 
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
+<span id = "FileName">Loading...</span><span style="position:absolute;right:10px;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
 <h5>Select the file destination:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
