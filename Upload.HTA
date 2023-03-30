@@ -156,8 +156,10 @@ Sub Upload()
 				
 			ElseIf objButton.value = "Retained" Then
 				'Prepare an email with the files as attachments, then save the sent email as proof.
+				Processing.InnerHTML = "Waiting... "
 				Call PrepEmail(aryFilePaths)
 				Call UploadNextSentEmail()
+				Processing.InnerHTML = "Processing... "
 			Else
 				If NOT objFSO.FolderExists(archPath & CMSNumber.Value) Then
 					ShowMessage errorLvl, "This discovery cannot be sent to eShare without an Initial Disclosure."
@@ -256,9 +258,16 @@ End Function
 ' Inputs:	aryFilePaths: array of file paths to the attachments.
 '*********************************************************
 Sub PrepEmail(aryFilePaths)
-	objShell.Run "OUTLOOK.EXE"
 
-	Dim objOutlook : Set objOutlook = CreateObject("Outlook.Application")
+	On Error Resume Next
+	Dim objOutlook: Set objOutlook = GetObject(, "Outlook.Application")
+	If Err.Number <> 0 Then
+		' Outlook is not running
+		objShell.Run "OUTLOOK.EXE"
+		Set objOutlook = CreateObject("Outlook.Application")
+
+	End If
+	Err.Clear
 
 	Dim strFilePath
 	Dim strCaseNum : strCaseNum = CMSNumber.Value
@@ -305,8 +314,8 @@ Sub UploadNextSentEmail()
 	Dim i : i=0
 	Do Until objSentFldr.Items.Count > origSentCount
 		i = i+1
-		If i >1000 Then
-			MsgBox("It appears you closed the message without sending it. Exiting...")
+		If i >5000 Then
+			Call MsgBox("It appears you closed the message without sending it. Exiting...", vbCritical, Document.title)
 			Exit Sub
 		End If
 	Loop
@@ -320,14 +329,22 @@ Sub UploadNextSentEmail()
 	res = MsgBox("Save sent Email message to " & objFSO.GetFileName(archPath) & "?" & vbCrLF &_
 				"To: " & objSentMsg.To & vbCrLF &_
 				"Subject: " & vbCrLF &_
-				 objSentMsg.Subject, vbYesNo)
+				 objSentMsg.Subject, vbYesNo OR vbQuestion, Document.title)
 	If res = vbYes Then
 		' Get rid of text before and after "+" in the subject to simplify the file name.
-		Dim aryNames : aryNames = Split(Split(objSentMsg.Subject, "+")(1), "_")
+		Dim aryNames : aryNames = Split(Split(objSentMsg.Subject & "+", "+")(1), "_")
 		' Insert the PAS (Private Attorney Share) file type.
 		aryNames(0)=aryNames(0) & "_PAS"
+		'Server assumes 2nd name component is the file name. HACK:
+		Dim strNamePart : strNamePart = aryNames(1)
+		If Len(strNamePart) = 3 AND strNamePart = UCase(strNamePart) Then
+			'Probably a type. This will confuse the server and we lose the description.
+			aryNames(1) = "_"
+		End If
+		strNamePart = Join(aryNames, "_")
+		strNamePart = Replace(strNamePart, "___", "_")
 		' Rebuild the file name for the server to parse.
-		objSentMsg.SaveAs objFSO.BuildPath(scanPath, Join(aryNames, "_") & ".msg")
+		objSentMsg.SaveAs objFSO.BuildPath(scanPath, strNamePart) & ".msg"
 	End If
 End Sub
 
@@ -678,7 +695,7 @@ Sub EmbedPreview
 		Preview.InnerHTML = strFilePath & "<br><br>All selected files will be sent with the same CMS information."
 	End If
 
-	Preview.InnerHTML = strFilePath & "<br><iframe src='" & strFilePath & "' width='200' height='290'></iframe>"
+	Preview.InnerHTML = strFilePath & "<br><iframe src='" & strFilePath & "' width='480' height='290'></iframe>"
 End Sub
 
 Function CompressFolder(strFolderPath)
@@ -869,7 +886,7 @@ End Sub
 
 <span id = "EnabledAsDisco" class="EnabledAsDisco">
 <span id = "EnabledInArch" class="EnabledInArch">
-<input type="radio" id="cloudRadio" name="office" value="OneDrive" disabled> OneDrive<br>
+<!--input type="radio" id="cloudRadio" name="office" value="OneDrive" disabled> OneDrive<br-->
 <input type="radio" id="retdRadio"  name="office" value="Retained" disabled> Retained Counsel
 </span><br><br>
 <input type="radio" id="pdRadio" name="office" value="PrimaryDefender"  > Primary Public Defender<br>
