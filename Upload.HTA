@@ -45,9 +45,9 @@ Dim objShell : Set objShell = CreateObject("WScript.Shell")
 Const archPath  = "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\"
 Dim clientPath : clientPath = archPath & "Resources\05_Client\"
 
-Const scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
+Dim scanPath : scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
 Const cloudPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
-Const eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
+Dim eSharePath : eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
 
 Dim aryAcroPaths: aryAcroPaths = Array("C:\Program Files\Adobe\Acrobat 10.0\",_
 										 "C:\Program Files\Adobe\Acrobat DC\",_
@@ -70,8 +70,13 @@ End If
 Dim strCommand  : strCommand  = appShareHTA.commandLine 
 Dim strFilePath : strFilePath = Trim(Split(strCommand, "/f:")(1))
 
-' Pull out the enable remote discovery option from the command string.
+' Pull out the enable remote discovery and debug options from the command string.
 Dim boolNoDisco   : boolNoDisco   = InStr(strCommand, " /disco ") <=0
+Dim boolDebug : boolDebug = InStr(strCommand, " /debug ") > 0
+If boolDebug Then
+	scanPath = "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS_Test\eDisCityAttyTest\"
+	eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS_Test\eShare\"
+End If
 
 Dim aryFilePaths : aryFilePaths = getPathsFromArgs(strFilePath)
 strFilePath = aryFilePaths(0)
@@ -85,7 +90,6 @@ Dim strCMSCase  : strCMSCase = Split(strFileName, "_")(0)
 Dim boolInArch : boolInArch = (InStr(strFilePath, objFSO.GetFileName(archPath))>0) And (InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase)>0)
 
 Dim aryImageTypes : aryImageTypes = Array("jpg", "jpeg", "png", "gif", "pict", "raw", "tif", "tiff")
-Dim boolDebug : boolDebug = objFSO.FileExists(objFSO.BuildPath(objShell.ExpandEnvironmentStrings("%USERPROFILE%"), "debug.txt"))
 Dim boolPics : boolPics =  	UBound(aryFilePaths) > 0
 Dim boolGS : boolGS =  		objFSO.FolderExists(strGSPath)
 
@@ -157,8 +161,7 @@ Sub Upload()
 			ElseIf objButton.value = "Retained" Then
 				'Prepare an email with the files as attachments, then save the sent email as proof.
 				Processing.InnerHTML = "Waiting... "
-				Call PrepEmail(aryFilePaths)
-				Call UploadNextSentEmail()
+				Call UploadNextSentEmail( PrepEmail(aryFilePaths) )
 				Processing.InnerHTML = "Processing... "
 			Else
 				If NOT objFSO.FolderExists(archPath & CMSNumber.Value) Then
@@ -257,7 +260,8 @@ End Function
 ' Purpose:	Prepare (but do not send) an Outlook email with the specified attachements.
 ' Inputs:	aryFilePaths: array of file paths to the attachments.
 '*********************************************************
-Sub PrepEmail(aryFilePaths)
+Function PrepEmail(aryFilePaths)
+	Const olFolderSentMail = 5
 
 	On Error Resume Next
 	Dim objOutlook: Set objOutlook = GetObject(, "Outlook.Application")
@@ -271,7 +275,7 @@ Sub PrepEmail(aryFilePaths)
 
 	Dim strFilePath
 	Dim strCaseNum : strCaseNum = CMSNumber.Value
-	Dim strSubject : strSubject = "[Encrypt30]+" & Left(objFSO.GetBaseName(aryFilePaths(0)), 40) & "+ New OCA Discovery"
+	Dim strSubject : strSubject = "[Encrypt_]+" & Left(objFSO.GetBaseName(aryFilePaths(0)), 40) & "+ New CA Discovery"
 	Dim strBody : strBody = "Attention: New Discovery attached for City Attorney Case " & strCaseNum & "." & vbCrLf & vbCrLf &_
 						"You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
 						"Bring this notice with you for faster service." & vbCrLf &_
@@ -292,31 +296,44 @@ Sub PrepEmail(aryFilePaths)
 				'		""" /a " & """" & strFilePath & """"
 			.Attachments.Add(strFilePath)
 		Next
+
+		PrepEmail = objOutlook.GetNamespace("MAPI").GetDefaultFolder(olFolderSentMail).Items.Count
+		
 		.Display(true) ' true make it modal. Script will wait here until window closes.
 	End With
-End Sub
+End Function
 
 '*********************************************************
 ' Purpose:	Wait until a new email shows up in the user's Outlook Sent Items.
-'			There is a possible race condition here since the email is being sent
-'			right when the modal window closes. Hopefully origSentCount is always set
-'			before the email gets to the sent items. 
 '			Verify that the user wants to save it, and store in Archive.
 '			This is the proof that the user emailed the discovery from PrepEmail().
+' Inputs:	intSentCount: Original number of emails in sent Items. 
+'			If set to 0, it will be calculated here.
+'			Generally needs to be calculated before this function as there is a 
+'			race condition (for sent items >10K) between calculating the initial 
+'			number of items in the sent mail and PrepEmail() sending the email 
+'			from modal outlook display.
 '*********************************************************
-Sub UploadNextSentEmail()
+Sub UploadNextSentEmail(intSentCount)
 	Const olFolderSentMail = 5
 	Dim objOutlook : Set objOutlook = CreateObject("Outlook.Application")
 
 	Dim objSentFldr : Set objSentFldr = objOutlook.GetNamespace("MAPI").GetDefaultFolder(olFolderSentMail)
-	Dim origSentCount : origSentCount = objSentFldr.Items.Count
-	
+	If intSentCount = 0 Then
+		intSentCount = objSentFldr.Items.Count
+	End If
+
+	Dim intLoopDelay: intLoopDelay = CInt(1000/intSentCount*2000) ' Shorten up the delay for big Sent Items box
 	Dim i : i=0
-	Do Until objSentFldr.Items.Count > origSentCount
+	Do Until objSentFldr.Items.Count > intSentCount
 		i = i+1
-		If i >5000 Then
-			Call MsgBox("It appears you closed the message without sending it. Exiting...", vbCritical, Document.title)
-			Exit Sub
+		If i > intLoopDelay Then
+			Dim result : result = MsgBox("Unable to find Email in your Outbox. You may have closed the message without sending it. Keep looking?", vbRetryCancel, Document.title)
+			If result = vbRetry Then
+				i = 0
+			Else 
+				Exit Sub
+			End If
 		End If
 	Loop
 
@@ -796,7 +813,7 @@ Sub SetFormContent
 	holdCheck.disabled = Not boolInArch
 
   	'Set up "CMSNumber" text input
-	CMSNumber.disabled = boolInArch
+	CMSNumber.disabled = boolInArch AND (NOT boolDebug)
 	FileType.disabled = boolInArch
   		
   	'Set up "Send Photograph Summary" button
