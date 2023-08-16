@@ -253,7 +253,7 @@ Function FormatFileName(strFileName)
 			strDestName = FileType.Value & "_" & strDestName
 		End If
 		'"<CMSNUMBER> "
-		strDestName = Replace(strDestName,  CMSNumber.Value & " ", "", 1, 0, 0)
+		strDestName = Replace(strDestName, (CMSNumber.Value & " "), "", 1, 1)
 		'"<CMSNUMBER>_"
 		strDestName = CMSNumber.Value & "_" & strDestName
 	End If
@@ -931,7 +931,7 @@ Type of file:
   <option value="TRN">Transcripts</option>
   <option value="MOT">Motions</option>
 
-  <option value="CII">CI-Confidential</option>
+  <option value="CII">Confidential Informant</option>
   <option value="COR">Correspondence</option>
   <option value="VIC">Victim Forms/Receipts</option>
   <option value="COM">Court Filings</option>
