@@ -17,7 +17,7 @@
 </script>
 
 <head>
-<title>eDiscovery EDMS Uploader v2.2B</title>
+<title>eDiscovery EDMS Uploader v2.3B</title>
 <HTA:APPLICATION ID="appShareHTA"
      APPLICATIONNAME="eDiscovery Uploader"
      SCROLL="no"
@@ -30,6 +30,7 @@
 <meta name="author" content="Eric S. Pooch">
 <style>
 	body{font-family:Calibri;}
+	h5{margin-bottom:0px;}
 </style>
 </head>
 <body onhelp="ShowHelp">
@@ -42,6 +43,7 @@ Dim logLvl : logLvl = infoLvl
 Dim objFSO   : Set objFSO = CreateObject("Scripting.FileSystemObject")
 Dim objShell : Set objShell = CreateObject("WScript.Shell")
 
+Const archRoot = "CaseFile_Archive"
 Const archPath  = "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\"
 Dim clientPath : clientPath = archPath & "Resources\05_Client\"
 
@@ -149,6 +151,12 @@ Sub Upload()
 	Processing.InnerHTML = "Processing... "
 	SubmitButton.InnerHTML = ""
 	
+	If coversheet.Checked Then
+		'Add a coversheet to the list of files
+		ReDim Preserve aryFilePaths(UBound(aryFilePaths) + 1)
+		aryFilePaths(UBound(aryFilePaths)) = SaveCoverSheet()
+	End If
+
 	For Each objButton in office
 		If objButton.Checked Then
 		
@@ -162,7 +170,7 @@ Sub Upload()
 				
 			ElseIf objButton.value = "Retained" Then
 				'Prepare an email with the files as attachments, then save the sent email as proof.
-				Processing.InnerHTML = "Waiting... "
+				Processing.InnerHTML = "Waiting for Outlook... "
 				Call UploadNextSentEmail( PrepEmail(aryFilePaths) )
 				Processing.InnerHTML = "Processing... "
 			Else
@@ -181,11 +189,11 @@ Sub Upload()
 	If placeholder.Checked Then 
 		PrintPlaceHolder()
 	End If
-	
+
 	If IsEmpty(strCopyPath) Then
  		Self.Close()
 	End If
-	
+
 	If pdfsummary.Checked Then
 		If boolPics Then
 			'Generate the contact sheet
@@ -232,7 +240,10 @@ Sub Upload()
 		If boolError Then
 			'skip processing 
 		ElseIf objFSO.FileExists(strFilePath) Then
+			if boolDebug Then MsgBox(objFSO.BuildPath(strCopyPath, FormatFileName(objFSO.GetFileName(strFilePath))) )
+
 			objFSO.CopyFile strFilePath, objFSO.BuildPath(strCopyPath, FormatFileName(objFSO.GetFileName(strFilePath)))
+			
 		Else
 			ShowMessage errorLvl, "File Not Found " & vbCRLF & strFilePath
 		End If
@@ -243,6 +254,11 @@ End Sub
 
 Function FormatFileName(strFileName)
 	Dim strDestName : strDestName = strFileName
+	
+	Dim strDefIdx : strDefIdx = Split(Defendant.Value,".")(0)
+	if strDefIdx <> "" Then strDefIdx = "." + strDefIdx
+	' Add the defendant index, if specified
+	strDestName = Replace(strDestName, (CMSNumber.Value & "_"), (CMSNumber.Value & strDefIdx & "_"), 1, 1)
 
 	If strCMSCase <> CMSNumber.Value OR FileType.Value <> "" Then
    		' Get rid of '_'s that will confuse the server.
@@ -280,7 +296,8 @@ Function PrepEmail(aryFilePaths)
 	Dim strFilePath
 	Dim strCaseNum : strCaseNum = CMSNumber.Value
 	Dim strSubject : strSubject = "[Encrypt_]+" & Left(objFSO.GetBaseName(aryFilePaths(0)), 40) & "+ New CA Discovery"
-	Dim strBody : strBody = "Attention: New Discovery attached for City Attorney Case " & strCaseNum & "." & vbCrLf & vbCrLf &_
+	Dim strBody : strBody = "Attention: New Discovery attached for City Attorney Case " & strCaseNum & "." & vbCrLf &_
+						formatDefendantInfo() & vbCrLf &_ 
 						"You may also pick up a copy at this office, allowing for approximately 5-10 minutes for us to process your request. " &_ 
 						"Bring this notice with you for faster service." & vbCrLf &_
 						"$0.25 - Page Photocopy; $7.45 - CD or DVD" & vbCrLf & vbCrLf &_
@@ -288,7 +305,7 @@ Function PrepEmail(aryFilePaths)
 						"1200 3rd Ave #700" & vbCrLf &_
 						"San Diego, CA 92101" & vbCrLf &_
 						"619-533-5500"  & vbCrLf & vbCrLf &_
-						"For CA office reference:" & vbCrLf & Join(aryFilePaths, vbCrLf)
+						"For CA office reference:" & vbCrLf & formatFileList()
 
 	Set objMail = objOutlook.CreateItem(0)
 	With objMail
@@ -331,7 +348,7 @@ Sub UploadNextSentEmail(intSentCount)
 
 	Do Until objSentFldr.Items.Count > intSentCount
 		If DateDiff("s", dateStart, Now) > 20 Then
-			Dim result : result = MsgBox("Unable to find Email in your Outbox. You may have closed the message without sending it. Keep looking?", vbRetryCancel, Document.title)
+			Dim result : result = MsgBox("Unable to find Email in your Sent Items. You may have closed the message without sending it. Keep looking?", vbRetryCancel, Document.title)
 			If result = vbRetry Then
 				' Reset the timeout
 				dateStart = Now
@@ -409,6 +426,43 @@ Function getPathsFromArgs(strPathList)
 End Function
 
 
+'*********************************************************
+' Purpose:	Get the saved defendants for the case
+'*********************************************************
+Function getDefendants()
+	Dim strCasePath, objFile, strDefs
+
+	strDefs = ","
+	strCasePath = Left(strFilePath, InStr(strFilePath, strCMSCase) + Len(strCMSCase))
+	' This is not guaranteed to be alpha order, but it always appears to be.
+	Set getDefendants = objFSO.GetFolder(strCasePath).Files
+End Function
+
+'*********************************************************
+' Purpose:	read the saved info for sepcified defendant for the case
+' Returns:	dictionary of info for defendant
+'*********************************************************
+Function getDefendantInfo(strDefFile)
+	Dim dctInfo : Set dctInfo = CreateObject("Scripting.Dictionary")
+
+	If boolDebug Then MsgBox strDefFile
+
+	Const ForReading = 1
+	Dim strCasePath, strlines
+	strCasePath = Left(strFilePath, InStr(strFilePath, strCMSCase) + Len(strCMSCase))
+
+	Set objText = objFSO.OpenTextFile (objFSO.BuildPath(strCasePath, strDefFile), ForReading)
+
+	Do Until objText.AtEndOfStream
+		aryKeyVal = Split(objText.Readline(), " = ")
+		if UBound(aryKeyVal) > 0 Then
+			dctInfo.Add aryKeyVal(0), aryKeyVal(1)
+		End If
+	Loop
+	objText.Close
+
+	Set getDefendantInfo = dctInfo
+End Function
 
 '*********************************************************
 ' Purpose:	Consolidate multiple image files into one PDF
@@ -685,6 +739,77 @@ End Function
 
 
 '*********************************************************
+' Purpose:	Return formatted defendant info string from Defendant.Value pulldown
+'*********************************************************
+Function formatDefendantInfo()
+	If boolDebug Then MsgBox(Defendant.Value)
+
+	' Remove the defendant index from the value to get just the filename.
+	strDefFile = Mid(Defendant.Value, Instr(Defendant.Value,".")+1)
+	
+	If Len(strDefFile) < Len("_.txt") Then
+		formatDefendantInfo = ""
+		Exit Function
+	End If
+	
+	Set dctDefInfo = getDefendantInfo(strDefFile)
+
+	' Format the dictionary into a usable string and return it.
+	formatDefendantInfo = "Defendant: " + dctDefInfo("LN") + ", " + dctDefInfo("FN") + "	DOB:" + dctDefInfo("DO") + vbCRLF _
+				+ "CT Number: " + dctDefInfo("CT") + "		CA Number: " + dctDefInfo("CA") + vbCRLF
+End Function
+
+'*********************************************************
+' Purpose:	Return formatted list of file paths for use in emails and cover sheets.
+'*********************************************************
+Function formatFileList()
+	Dim strFileList, strfile : strFileList = ""
+	For Each strfile in aryFilePaths
+		' cut off the leading path elements
+		strRelPath = Mid( strFile, InStr(strFile, archRoot) + Len(archRoot) )
+		strFileList = strFileList + strRelPath + vbCRLF
+	Next
+	formatFileList = strFileList
+End Function
+
+'*********************************************************
+' Purpose:	Prepare and save a cover sheet 
+'			with information about the case file
+'*********************************************************
+Function SaveCoverSheet
+	Const strCover = "CoverSheet"
+
+	strFileList = ""
+	For Each strfile in aryFilePaths
+		strFileList = strFileList + objFSO.GetFileName(strFile)	+ vbCRLF
+	Next
+	
+	strDefInfo = formatDefendantInfo()
+	If Len(strDefInfo) = 0 Then
+		MsgBox "Can't add Defendant information to " & strCover & ". No valid Defendants selected."
+	End If
+
+	strTextInfo = strDefInfo + "Attached File(s):" + vbCRLF + formatFileList()
+
+	Set objWord = CreateObject("Word.Application")
+	objWord.Visible = True
+	MsgBox(clientPath & strCover & ".dotx")
+	Set objDoc = objWord.Documents.Add(clientPath & strCover & ".dotx")
+	
+	Set objRange = objDoc.Bookmarks("CT_NUM2").Range
+	objRange.Text = strTextInfo
+	strFileBaseName = Split(Defendant.Value, ".")(1)
+	strDestPath = objFSO.BuildPath (objFSO.GetSpecialFolder(2), (CMSNumber.Value & "_COR_" & strFileBaseName  & ".docx" ))
+
+	objDoc.SaveAs strDestPath
+	objDoc.Close(0) ' Don't Save
+	'objWord.Quit()
+	If boolDebug Then MsgBox strDestPath
+	SaveCoverSheet = strDestPath
+End Function
+
+
+'*********************************************************
 ' Purpose:	Prepare and print a place holder sheet 
 '			with paths to the media files to go into the case file.
 '*********************************************************
@@ -787,10 +912,12 @@ Sub SetFormContent
 	Else
 		EnabledInArch.style.color = "gray"
 		EnabledInArch2.style.color = "gray"
+		EnabledInArch3.style.color = "gray"
 		
 		'cloudRadio.title = strNotInArchive
 		retdRadio.title = strNotInArchive
-		holdCheck.title = strNotInArchive
+		holdCheck.title = strNotInArchive'
+		Defendant.title = strNotInArchive
 	End If	
 		
 	archRadio.disabled = boolInArch	
@@ -815,9 +942,14 @@ Sub SetFormContent
 	'cloudRadio.disabled = Not (boolInArch And boolDebug)
 	    
 	holdCheck.disabled = Not boolInArch
+    coverCheck.disabled = Not boolInArch
 
   	'Set up "CMSNumber" text input
 	CMSNumber.disabled = boolInArch AND (NOT boolDebug)
+
+	'Set up "Defendant" drop down
+	Defendant.disabled = NOT boolInArch
+
 	FileType.disabled = boolInArch
   		
   	'Set up "Send Photograph Summary" button
@@ -839,7 +971,34 @@ Sub SetFormContent
 		'Split on " " makes uploading 911 calls easier
 		CMSNumber.Value = Split(strCMSCase," ")(0)
 	End If
-	
+
+	'Set up defendant selection
+	' Set up a default, but don't add it yet.
+	Set objOption = Document.createElement("OPTION")
+	objOption.Value = ".Dis"
+	objOption.Text = "Default"
+
+	If boolInArch Then
+		Dim objDef, i
+		i=1
+		'setup the drop down menu
+		For Each objDef In getDefendants()
+			If objFSO.GetExtensionName(objDef) = "txt" then
+				Set objOption = Document.createElement("OPTION")
+				objOption.Value = i & "." & objDef.Name
+				objOption.Text = objFSO.GetBaseName(objDef)
+				Defendant.Add(objOption)
+				i = i+1
+			End If
+		Next
+		If i=1 Then
+			' No D's added yet. Add default
+			Defendant.Add(objOption)
+		End If
+	Else
+		' Not in Archive. Add default
+		Defendant.Add(objOption)
+	End If
 End Sub
 
 
@@ -899,7 +1058,7 @@ End Sub
 
 </script>
 
-<span id = "FileName">Loading...</span><span style="position:absolute;right:10px;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
+<span style="position:absolute;right:10px;"><a href="#" onclick="ShowHelp()">[Help]</a></span>
 <h5>Select the file destination:</h5>
 <span id = "DisabledInArch" class="DisabledInArch">
 <input type="radio" id="archRadio" name="office" value="Archive" disabled checked> City Attorney CaseFile Archive
@@ -917,11 +1076,27 @@ End Sub
 </span>
 
 <h5>Additional Options:</h5>
-<span id = "EnabledInArch2" class="EnabledInArch"><input type="checkbox" id="holdCheck" name="placeholder" class="EnabledInArch" disabled> Print Placeholder Sheet</span>&nbsp&nbsp&nbsp
+
+<span id = "EnabledInArch2" class="EnabledInArch">
+	<input type="checkbox" id="coverCheck" name="coversheet" class="EnabledInArch" disabled> Add eDiscovery Cover Sheet &nbsp&nbsp&nbsp
+	<input type="checkbox" id="holdCheck" name="placeholder" class="EnabledInArch" disabled> Print Placeholder Sheet
+</span><br />
 <span id = "EnabledIfPics"  class="EnabledIfPics"><input type="checkbox" id="summCheck" name="pdfsummary"  class="EnabledIfPics" disabled> Send Photograph Summary</span><br><br>
-<!--{{InsertControlsHere}}-Do not remove this line-->
-CMS Case Number:  <input type="text" name="CMSNumber" disabled><br>
-Type of file: 
+
+<table>
+	<tr>
+		<td>CMS Case Number:</td>
+		<td><input type="text" name="CMSNumber" disabled></td>
+	</tr>
+	<tr>
+		<td><span id = "EnabledInArch3" class="EnabledInArch">Defendant:</span></td>
+		<td>
+			<select name="Defendant"></select>
+		</td>
+	</tr>
+	<tr>
+		<td>Type of file:</td>
+		<td>
  <select name="FileType" disabled>
   <option value="">Default</option>
   <option value="RTS">Agency Reports-Right Side</option>
@@ -941,8 +1116,13 @@ Type of file:
   <option value="CNF">Left Side-Confidential</option>
   <option value="URD">Left Side-Needs Review/Redaction</option>
   <option value="RPS">RAPS</option>
- </select><br><br>
+ </select>
+		</td>
+	</tr>
+</table>
+ 
+<br>
 <span id = "SubmitButton"><input type="button" value="Submit File" type="submit" onClick="Upload"></span>
 <hr>
-<span id = "Preview"><input type="button" value="Preview" onClick="EmbedPreview"></span><br>
+<span id = "Preview"><input type="button" value="Preview" onClick="EmbedPreview"><br /><span id = "FileName">Loading...</span></span><br>
 </body>
