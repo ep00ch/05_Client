@@ -794,7 +794,7 @@ Function SaveCoverSheet
 
 	Set objWord = CreateObject("Word.Application")
 	objWord.Visible = True
-	MsgBox(clientPath & strCover & ".dotx")
+	//MsgBox(clientPath & strCover & ".dotx")
 	Set objDoc = objWord.Documents.Add(clientPath & strCover & ".dotx")
 	
 	Set objRange = objDoc.Bookmarks("CT_NUM2").Range
@@ -1103,6 +1103,7 @@ End Sub
   <option value="RTS">Agency Reports-Right Side</option>
   <option value="RAP">RAPS</option>
   <option value="LTS">Agency Reports-Left Side</option>
+  <option value="CAW">DCA Working File (editable)</option>
   <option value="CRV">CRE (DCA)</option>
   <option value="TRN">Transcripts</option>
   <option value="MOT">Motions</option>
@@ -1113,7 +1114,7 @@ End Sub
   <option value="COM">Court Filings</option>
   <option value="PAS">Private Atty Share</option>
   <option value="OTH">Other</option>
-  <option disabled>&#9472; Old Folders &#9472;</option>
+  <option disabled>&#9472; FOR OLD CASES ONLY! &#9472;</option>
   <option value="CNF">Left Side-Confidential</option>
   <option value="URD">Left Side-Needs Review/Redaction</option>
   <option value="RPS">RAPS</option>
