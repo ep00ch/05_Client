@@ -313,6 +313,10 @@ Function PrepEmail(aryFilePaths)
 		.Subject = strSubject
 		.Body = strBody
 		For Each strFilePath In aryFilePaths
+			If objFSO.GetFile(strFilePath).Size > 20000000 Then
+				' Otherwise Outlook will not show an error and just not attach the file.
+				ShowMessage warnLvl, "The file you're attaching may be bigger than the server allows. Try attaching parts of the file to multiple emails, or uploading the file to a shared location." & vbCrLf & vbCrLf & strFilePath
+			End If
 			'objShell.Run "OUTLOOK.EXE /c ipm.note /m ""?subject=" & strSubject &_
 				'		"&body=" & strBody & strFilePath &_
 				'		""" /a " & """" & strFilePath & """"
