@@ -45,6 +45,8 @@ Dim objShell : Set objShell = CreateObject("WScript.Shell")
 
 Const archRoot = "CaseFile_Archive"
 Const archPath  = "\\ad\dfs\sdat-shared2\Attorney\CRIMCASE\CaseFile_Archive\"
+Dim aryArchPaths : aryArchPaths = Array(archPath, "L:\CaseFile_Archive\")
+
 Dim clientPath : clientPath = archPath & "Resources\05_Client\"
 
 Dim scanPath : scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eDisCityAtty\"
@@ -53,13 +55,6 @@ Dim scanPath : scanPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDi
 Const cloudPath  = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\FileCloud\"
 Dim eSharePath : eSharePath = "\\ad\dfs\SDAT-Shared2\Attorney\CRIMCASE\CRIMFORM\eDiscovery_EDMS\eShare\"
 
-Dim aryAcroPaths: aryAcroPaths = Array("C:\Program Files\Adobe\Acrobat 10.0\",_
-										 "C:\Program Files\Adobe\Acrobat DC\",_
-										 "C:\Program Files\Adobe\Acrobat 2015\",_
-										 "C:\Program Files\Adobe\Acrobat 11.0\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat DC\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat 2015\",_
-										 "C:\Program Files (x86)\Adobe\Acrobat 11.0")
 Const strGSPath	= "C:\Program Files\gs\gs9.53.3\bin\gswin64c.exe"
 Dim strGSExePath : strGSExePath = strGSPath & "gswin64c.exe"
 
@@ -89,22 +84,26 @@ Dim strFileName : strFileName = objFSO.GetFileName(strFilePath)
 Dim strCMSCase  : strCMSCase = Split(strFileName, "_")(0)
 
 'Determine if the file is already in the archive.
-'archPath would be an ideal test for this, but sometines we get the mapped drive and sometimes the network url
-'so just check to see if the last folder of archPath is in the filepath
-Dim boolInArch : boolInArch = (InStr(strFilePath, objFSO.GetFileName(archPath))>0) And (InStr(objFSO.GetParentFolderName(strFilePath), strCMSCase)>0)
+'If so, get the case number from the folder name instead of the file.
+Dim boolInArch : boolInArch = False
+Dim tmpPath
+For Each tmpPath in aryArchPaths
+	If InStr(strFilePath, tmpPath) = 1 Then
+		boolInArch = True
+		strCMSCase = Split( Replace(strFilePath, tmpPath, ""), "\")(0)
+	End If
+Next
+
 
 Dim aryImageTypes : aryImageTypes = Array("jpg", "jpeg", "png", "gif", "pict", "raw", "tif", "tiff")
 Dim boolPics : boolPics =  	UBound(aryFilePaths) > 0
 Dim boolGS : boolGS =  		objFSO.FolderExists(strGSPath)
 
+Dim strAcroPath : strAcroPath = objShell.RegRead("HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVEntitlement\iEntitlementLevel")
 Dim boolPro : boolPro = False
-Dim strAcroPath
-For Each  strAcroPath In aryAcroPaths
-	If objFSO.FolderExists(strAcroPath) Then
-		boolPro = True
-		Exit For
-	End If
-Next
+If strAcroPath = 300 Then
+	boolPro = True
+End If
  
 If boolPics Then
 	boolPics = False
@@ -120,6 +119,7 @@ If boolDebug Then
 	logLvl = debugLvl
 	ShowMessage debugLvl, "Debug mode enabled" & vbCrLf & strCommand
 	ShowMessage debugLvl, Join(aryFilePaths, vbCrLf)
+	ShowMessage debugLvl, "boolPro:" & boolPro
     ShowMessage debugLvl, "boolInArch:" & boolInArch & vbCrLf & objFSO.GetParentFolderName(strFilePath)
 ElseIf False Then ' set to true to warn users.
 	ShowMessage fatalLvl, "Undergoing Maintenance. Try again later."
@@ -257,10 +257,12 @@ Function FormatFileName(strFileName)
 	
 	Dim strDefIdx : strDefIdx = Split(Defendant.Value,".")(0)
 	if strDefIdx <> "" Then strDefIdx = "." + strDefIdx
-	' Add the defendant index, if specified
-	strDestName = Replace(strDestName, (CMSNumber.Value & "_"), (CMSNumber.Value & strDefIdx & "_"), 1, 1)
+	Dim strPrefix : strPrefix = CMSNumber.Value & strDefIdx & "_"
 
-	If strCMSCase <> CMSNumber.Value OR FileType.Value <> "" Then
+	' Add the defendant index, if specified
+	strDestName = Replace(strDestName, (CMSNumber.Value & "_"), strPrefix, 1, 1)
+
+	If strCMSCase <> CMSNumber.Value OR FileType.Value <> "" OR InStr(strFileName, (CMSNumber.Value & "_")) <> 1 Then
    		' Get rid of '_'s that will confuse the server.
 		strDestName = Replace(strDestName, "_", "-")
 
@@ -270,8 +272,10 @@ Function FormatFileName(strFileName)
 		End If
 		'"<CMSNUMBER> "
 		strDestName = Replace(strDestName, (CMSNumber.Value & " "), "", 1, 1)
+		strDestName = Replace(strDestName, (CMSNumber.Value & "-"), "", 1, 1)
+
 		'"<CMSNUMBER>_"
-		strDestName = CMSNumber.Value & "_" & strDestName
+		strDestName = strPrefix & strDestName
 	End If
 	FormatFileName = strDestName
 End Function
