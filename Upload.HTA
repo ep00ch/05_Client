@@ -98,11 +98,12 @@ Next
 Dim aryImageTypes : aryImageTypes = Array("jpg", "jpeg", "png", "gif", "pict", "raw", "tif", "tiff")
 Dim boolPics : boolPics =  	UBound(aryFilePaths) > 0
 Dim boolGS : boolGS =  		objFSO.FolderExists(strGSPath)
-
-Dim strAcroPath : strAcroPath = objShell.RegRead("HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVEntitlement\iEntitlementLevel")
-Dim boolPro : boolPro = False
-If strAcroPath = 300 Then
+	
+Dim boolPro : boolPro = ReadRegistry("HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVEntitlement\iEntitlementLevel")
+If boolPro = 300 Then
 	boolPro = True
+Else
+	boolPro = False
 End If
  
 If boolPics Then
@@ -1031,6 +1032,15 @@ Function TypeErrorForFile(strPath)
 	End If
 End Function
 
+	
+Function ReadRegistry(strRegistryKey)
+
+    On Error Resume Next
+
+	ReadRegistry = Nothing
+    ReadRegistry = objShell.RegRead( strRegistryKey )
+
+End Function
 
 
 Sub ShowMessage(intLvl, strMessage)
