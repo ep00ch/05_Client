@@ -813,7 +813,7 @@ Function SaveCoverSheet
 
 	objDoc.SaveAs strDestPath
 	objDoc.Close(0) ' Don't Save
-	'objWord.Quit()
+	objWord.Quit()  ' Quit our new instance
 	If boolDebug Then MsgBox strDestPath
 	SaveCoverSheet = strDestPath
 End Function
