@@ -102,6 +102,8 @@ Dim boolGS : boolGS =  		objFSO.FolderExists(strGSPath)
 Dim boolPro : boolPro = ReadRegistry("HKEY_CURRENT_USER\Software\Adobe\Adobe Acrobat\DC\AVEntitlement\iEntitlementLevel")
 If boolPro = 300 Then
 	boolPro = True
+ElseIf objFSO.FolderExists("C:\Program Files (x86)\Adobe\Acrobat 11.0") Then
+	boolPro = True
 Else
 	boolPro = False
 End If
